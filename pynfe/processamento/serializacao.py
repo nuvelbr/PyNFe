@@ -3,8 +3,8 @@ import base64
 import hashlib
 import re
 import warnings
-
 from datetime import datetime
+from decimal import Decimal
 
 import pynfe.utils.xml_writer as xmlw
 from pynfe.entidades import Manifesto, NotaFiscal
@@ -23,6 +23,7 @@ from pynfe.utils.flags import (
     VERSAO_MDFE,
     VERSAO_PADRAO,
     VERSAO_QRCODE,
+    VERSAO_QRCODE_V3,
 )
 from pynfe.utils.webservices import MDFE, NFCE
 
@@ -2060,6 +2061,170 @@ class SerializacaoQrcode(object):
         if return_qr:
             return nfe, qrcode.strip()
         # retorna apenas nfe com o qrcode incluido NT2015/002
+        else:
+            return nfe
+
+    def gerar_qrcode_v3(
+        self,
+        xml,
+        assinatura_function=None,
+        return_qr=False,
+    ):
+        """
+        Gera e serializa o QR-Code v3 da NFC-e (NT 2025.001).
+
+        Esta versão elimina o uso de CSC e implementa dois modos:
+        - Online (tpEmis=1): chave|3|tpAmb (sem assinatura)
+        - Offline (tpEmis=9): chave|3|tpAmb|dia|vNF|tp_idDest|idDest|ASSINATURA
+
+        Args:
+            xml: Element tree da NFC-e (já assinada)
+            assinatura_function: Função callback para assinar o payload offline.
+                                Recebe uma string e retorna a assinatura em Base64.
+                                Obrigatória apenas para modo offline (tpEmis=9).
+            return_qr: Se True, retorna tupla (xml, qrcode_url). Se False, retorna apenas xml.
+
+        Returns:
+            Element tree com infNFeSupl atualizado ou tupla (xml, qrcode_url)
+
+        Raises:
+            ValueError: Se assinatura_function não for fornecida no modo offline
+        """
+
+        ns = {"ns": NAMESPACE_NFE}
+        nfe = xml
+
+        # Extrai dados básicos do XML
+        chave = nfe[0].attrib["Id"].replace("NFe", "")
+        tpamb = nfe.xpath("ns:infNFe/ns:ide/ns:tpAmb/text()", namespaces=ns)[0]
+        cuf = nfe.xpath("ns:infNFe/ns:ide/ns:cUF/text()", namespaces=ns)[0]
+        uf = [key for key, value in CODIGOS_ESTADOS.items() if value == cuf][0].upper()
+
+        # Verifica modo de emissão (1=normal/online, 9=contingência/offline)
+        tpEmis_list = nfe.xpath("ns:infNFe/ns:ide/ns:tpEmis/text()", namespaces=ns)
+        tpEmis = tpEmis_list[0] if tpEmis_list else "1"
+
+        # Determina URLs base conforme UF e ambiente
+        if tpamb == "1":  # Produção
+            # Tenta construir URL base
+            if uf in ["PR", "CE", "RS", "RJ", "RO", "DF"]:
+                base_qr = NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["URL"]
+            elif uf == "SP":
+                base_qr = NFCE[uf]["HTTPS"] + "www." + NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["HTTPS"] + "www." + NFCE[uf]["URL"]
+            elif uf == "BA":
+                base_qr = NFCE[uf]["HTTPS"] + NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["URL"]
+            elif uf == "MG":
+                base_qr = NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["HTTPS"] + NFCE[uf]["URL"]
+            else:
+                base_qr = NFCE[uf]["HTTPS"] + NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["HTTPS"] + NFCE[uf]["URL"]
+        else:  # Homologação
+            if uf in ["PR", "CE", "RS", "RJ", "RO", "DF"]:
+                base_qr = NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["URL"]
+            elif uf == "SP":
+                base_qr = NFCE[uf]["HTTPS"] + "www.homologacao." + NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["HTTPS"] + "www.homologacao." + NFCE[uf]["URL"]
+            elif uf == "BA":
+                base_qr = NFCE[uf]["HOMOLOGACAO"] + NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["URL"]
+            elif uf == "MG":
+                base_qr = NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["HOMOLOGACAO"] + NFCE[uf]["URL"]
+            elif uf == "PB":
+                # PB tem comportamento especial em homologação
+                base_qr = NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["HOMOLOGACAO"]
+            else:
+                base_qr = NFCE[uf]["HOMOLOGACAO"] + NFCE[uf]["QR"]
+                url_chave = NFCE[uf]["HOMOLOGACAO"] + NFCE[uf]["URL"]
+
+        # Remove trailing ? ou & da URL base
+        base_qr = base_qr.rstrip("?&")
+
+        # Modo Online (tpEmis != 9)
+        if tpEmis != "9":
+            # Formato: chave|3|tpAmb
+            payload = f"{chave}|{VERSAO_QRCODE_V3}|{tpamb}"
+        else:
+            # Modo Offline (tpEmis = 9)
+            # Formato: chave|3|tpAmb|dia|vNF|tp_idDest|idDest|ASSINATURA
+
+            if assinatura_function is None:
+                raise ValueError(
+                    "assinatura_function é obrigatória para QR-Code v3 em modo offline (tpEmis=9)"
+                )
+
+            # Extrai dia da emissão (DD)
+            dhEmi = nfe.xpath("ns:infNFe/ns:ide/ns:dhEmi/text()", namespaces=ns)[0]
+            m = re.search(r"\d{4}-\d{2}-(\d{2})", str(dhEmi))
+            dia = m.group(1) if m else "01"
+
+            # Extrai valor total da nota
+            vNF = nfe.xpath("ns:infNFe/ns:total/ns:ICMSTot/ns:vNF/text()", namespaces=ns)[0]
+            # Formata com ponto decimal, sem separador de milhar, 2 casas decimais
+            vNF_decimal = Decimal(str(vNF))
+            vNF_fmt = f"{vNF_decimal:.2f}"
+
+            # Extrai dados do destinatário (se existir)
+            dest_cpf = nfe.xpath("ns:infNFe/ns:dest/ns:CPF/text()", namespaces=ns)
+            dest_cnpj = nfe.xpath("ns:infNFe/ns:dest/ns:CNPJ/text()", namespaces=ns)
+            dest_idEstrangeiro = nfe.xpath(
+                "ns:infNFe/ns:dest/ns:idEstrangeiro/text()", namespaces=ns
+            )
+
+            tp_idDest = ""
+            idDest = ""
+
+            if dest_cpf:
+                tp_idDest = "2"  # CPF
+                idDest = dest_cpf[0]
+            elif dest_cnpj:
+                tp_idDest = "1"  # CNPJ
+                idDest = dest_cnpj[0]
+            elif dest_idEstrangeiro:
+                tp_idDest = "3"  # idEstrangeiro
+                idDest = dest_idEstrangeiro[0]
+            # Se não houver destinatário, tp_idDest e idDest ficam vazios
+
+            # Monta payload sem assinatura (posições 1-7)
+            payload_sem_assinatura = (
+                f"{chave}|{VERSAO_QRCODE_V3}|{tpamb}|{dia}|{vNF_fmt}|{tp_idDest}|{idDest}"
+            )
+
+            # Assina o payload
+            assinatura_b64 = assinatura_function(payload_sem_assinatura)
+
+            # Monta payload completo (posições 1-8)
+            payload = f"{payload_sem_assinatura}|{assinatura_b64}"
+
+        # Monta URL final
+        # Tratamento especial para PB em homologação
+        if uf == "PB" and tpamb != "1":
+            qrcode = f"{base_qr}hom?p={payload}"
+        else:
+            qrcode = f"{base_qr}?p={payload}"
+
+        # Atualiza ou cria elemento infNFeSupl
+        # Remove infNFeSupl existente, se houver
+        for old_info in nfe.xpath("infNFeSupl"):
+            nfe.remove(old_info)
+
+        # Cria novo infNFeSupl
+        info = etree.Element("infNFeSupl")
+        etree.SubElement(info, "qrCode").text = etree.CDATA(qrcode.strip())
+        etree.SubElement(info, "urlChave").text = url_chave
+
+        # Insere após infNFe (posição 1)
+        nfe.insert(1, info)
+
+        # Retorna conforme solicitado
+        if return_qr:
+            return nfe, qrcode.strip()
         else:
             return nfe
 

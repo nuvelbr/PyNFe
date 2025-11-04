@@ -22,6 +22,7 @@ NAMESPACE_CTE_METODO = "http://www.portalfiscal.inf.br/cte/wsdl/"
 VERSAO_CTE = "3.00"
 
 VERSAO_QRCODE = "2"
+VERSAO_QRCODE_V3 = "3"
 
 TIPOS_DOCUMENTO = (
     "CNPJ",

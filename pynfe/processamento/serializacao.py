@@ -1316,8 +1316,13 @@ class SerializacaoXML(Serializacao):
     # Reforma Tributaria - IVA Dual (NT 2025.002-RTC)
     # =============================================
 
-    # CSTs that have taxable values (vBC, rates, amounts)
-    _IBSCBS_CST_TRIBUTADOS = ("000", "010", "200", "400", "510", "600", "620", "800", "810", "900")
+    # CSTs that have taxable values (vBC, rates, amounts) and use <gIBSCBS>
+    _IBSCBS_CST_TRIBUTADOS = ("000", "010", "200", "400", "510", "600", "800", "810", "900")
+
+    # CSTs that use the monophasic tax regime and emit <gIBSCBSMono> instead of <gIBSCBS>
+    # (qBCMono, adRemIBS/adRemCBS, vIBSMono/vCBSMono). Start with 620 (combustiveis);
+    # 630/640 will be added when SEFAZ publishes the corresponding cClassTrib codes.
+    _IBSCBS_CST_MONOFASICO = ("620",)
 
     def _serializar_imposto_ibscbs(
         self, produto_servico, modelo, tag_raiz="imposto", retorna_string=True
@@ -1340,45 +1345,83 @@ class SerializacaoXML(Serializacao):
         #     self._serializar_is(produto_servico, tag_raiz)
 
     def _serializar_ibscbs(self, produto_servico, tag_raiz):
-        """Serializa <IBSCBS> com gIBSCBS contendo gIBSUF, gIBSMun e gCBS."""
+        """Serializa <IBSCBS>.
+
+        Para CSTs monofasicas (ex: 620) emite <gIBSCBSMono> com qBCMono, adRemIBS,
+        vIBSMono, adRemCBS, vCBSMono. Para demais CSTs tributados emite <gIBSCBS>
+        com vBC + gIBSUF + gIBSMun + gCBS.
+        """
         ibscbs = etree.SubElement(tag_raiz, "IBSCBS")
         etree.SubElement(ibscbs, "CST").text = produto_servico.ibscbs_cst
 
         if produto_servico.ibscbs_c_class_trib:
             etree.SubElement(ibscbs, "cClassTrib").text = produto_servico.ibscbs_c_class_trib
 
-        if produto_servico.ibscbs_cst in self._IBSCBS_CST_TRIBUTADOS:
-            gibscbs = etree.SubElement(ibscbs, "gIBSCBS")
+        if produto_servico.ibscbs_cst in self._IBSCBS_CST_MONOFASICO:
+            self._serializar_gibscbs_mono(produto_servico, ibscbs)
+        elif produto_servico.ibscbs_cst in self._IBSCBS_CST_TRIBUTADOS:
+            self._serializar_gibscbs(produto_servico, ibscbs)
 
-            etree.SubElement(gibscbs, "vBC").text = "{:.2f}".format(produto_servico.ibscbs_vbc or 0)
+    def _serializar_gibscbs(self, produto_servico, ibscbs):
+        """Serializa <gIBSCBS> padrao com vBC, gIBSUF, gIBSMun, vIBS e gCBS."""
+        gibscbs = etree.SubElement(ibscbs, "gIBSCBS")
 
-            # gIBSUF
-            gibsuf = etree.SubElement(gibscbs, "gIBSUF")
-            etree.SubElement(gibsuf, "pIBSUF").text = "{:.4f}".format(
-                produto_servico.ibscbs_p_ibs_uf or 0
-            )
-            etree.SubElement(gibsuf, "vIBSUF").text = "{:.2f}".format(
-                produto_servico.ibscbs_v_ibs_uf or 0
-            )
+        etree.SubElement(gibscbs, "vBC").text = "{:.2f}".format(produto_servico.ibscbs_vbc or 0)
 
-            # gIBSMun
-            gibsmun = etree.SubElement(gibscbs, "gIBSMun")
-            etree.SubElement(gibsmun, "pIBSMun").text = "{:.4f}".format(
-                produto_servico.ibscbs_p_ibs_mun or 0
-            )
-            etree.SubElement(gibsmun, "vIBSMun").text = "{:.2f}".format(
-                produto_servico.ibscbs_v_ibs_mun or 0
-            )
+        # gIBSUF
+        gibsuf = etree.SubElement(gibscbs, "gIBSUF")
+        etree.SubElement(gibsuf, "pIBSUF").text = "{:.4f}".format(
+            produto_servico.ibscbs_p_ibs_uf or 0
+        )
+        etree.SubElement(gibsuf, "vIBSUF").text = "{:.2f}".format(
+            produto_servico.ibscbs_v_ibs_uf or 0
+        )
 
-            # vIBS total
-            etree.SubElement(gibscbs, "vIBS").text = "{:.2f}".format(
-                produto_servico.ibscbs_v_ibs or 0
-            )
+        # gIBSMun
+        gibsmun = etree.SubElement(gibscbs, "gIBSMun")
+        etree.SubElement(gibsmun, "pIBSMun").text = "{:.4f}".format(
+            produto_servico.ibscbs_p_ibs_mun or 0
+        )
+        etree.SubElement(gibsmun, "vIBSMun").text = "{:.2f}".format(
+            produto_servico.ibscbs_v_ibs_mun or 0
+        )
 
-            # gCBS
-            gcbs = etree.SubElement(gibscbs, "gCBS")
-            etree.SubElement(gcbs, "pCBS").text = "{:.4f}".format(produto_servico.ibscbs_p_cbs or 0)
-            etree.SubElement(gcbs, "vCBS").text = "{:.2f}".format(produto_servico.ibscbs_v_cbs or 0)
+        # vIBS total
+        etree.SubElement(gibscbs, "vIBS").text = "{:.2f}".format(produto_servico.ibscbs_v_ibs or 0)
+
+        # gCBS
+        gcbs = etree.SubElement(gibscbs, "gCBS")
+        etree.SubElement(gcbs, "pCBS").text = "{:.4f}".format(produto_servico.ibscbs_p_cbs or 0)
+        etree.SubElement(gcbs, "vCBS").text = "{:.2f}".format(produto_servico.ibscbs_v_cbs or 0)
+
+    def _serializar_gibscbs_mono(self, produto_servico, ibscbs):
+        """Serializa <gIBSCBSMono> para CSTs monofasicas (620).
+
+        Estrutura obrigatoria por NT 2025.002-RTC:
+            <gIBSCBSMono>
+                <qBCMono>TDec_1104v (4 casas)</qBCMono>
+                <adRemIBS>TDec_0302a10 (4 casas)</adRemIBS>
+                <vIBSMono>TDec_1302 (2 casas)</vIBSMono>
+                <adRemCBS>TDec_0302a10 (4 casas)</adRemCBS>
+                <vCBSMono>TDec_1302 (2 casas)</vCBSMono>
+            </gIBSCBSMono>
+        """
+        gibscbs_mono = etree.SubElement(ibscbs, "gIBSCBSMono")
+        etree.SubElement(gibscbs_mono, "qBCMono").text = "{:.4f}".format(
+            produto_servico.ibscbs_q_bc_mono or 0
+        )
+        etree.SubElement(gibscbs_mono, "adRemIBS").text = "{:.4f}".format(
+            produto_servico.ibscbs_ad_rem_ibs or 0
+        )
+        etree.SubElement(gibscbs_mono, "vIBSMono").text = "{:.2f}".format(
+            produto_servico.ibscbs_v_ibs_mono or 0
+        )
+        etree.SubElement(gibscbs_mono, "adRemCBS").text = "{:.4f}".format(
+            produto_servico.ibscbs_ad_rem_cbs or 0
+        )
+        etree.SubElement(gibscbs_mono, "vCBSMono").text = "{:.2f}".format(
+            produto_servico.ibscbs_v_cbs_mono or 0
+        )
 
     def _serializar_is(self, produto_servico, tag_raiz):
         """Serializa <IS> (Imposto Seletivo) como filho direto de <imposto>.

@@ -37,8 +37,25 @@ A implementacao cobre:
 - `vNF` **NAO inclui** IBS/CBS (proibido em 2025-2026)
 - `finNFe=5` (Nota de Debito) e `finNFe=6` (Nota de Credito)
 - Campos de entidade para IS (Imposto Seletivo) — **armazenados mas nao serializados** ate o schema suportar (2027)
+- Tributacao monofasica (`gIBSCBSMono`) para CST 620 — combustiveis e demais produtos sujeitos ao regime monofasico de IBS/CBS
 
-**Nao inclui** (ainda): Split Payment, cashback, eventos de apuracao assistida, Grupo VB (total do item), Grupo VC (referenciamento de DF-e), Grupo BB (antecipacao de pagamento), tributacao monofasica (`gIBSCBSMono`), diferimento per-item (`gDif`), devolucao de tributos per-item (`gDevTrib`), reducao de aliquota per-item (`gRed`), estorno de credito (`gEstornoCred`), credito presumido per-item (`gCredPresOper`, `gCredPresIBSZFM`).
+**Nao inclui** (ainda): Split Payment, cashback, eventos de apuracao assistida, Grupo VB (total do item), Grupo VC (referenciamento de DF-e), Grupo BB (antecipacao de pagamento), diferimento per-item (`gDif`), devolucao de tributos per-item (`gDevTrib`), reducao de aliquota per-item (`gRed`), estorno de credito (`gEstornoCred`), credito presumido per-item (`gCredPresOper`, `gCredPresIBSZFM`).
+
+### Tributacao monofasica — `gIBSCBSMono`
+
+Para produtos com CST 620 (combustiveis, etc.) o grupo emitido dentro de `<IBSCBS>` e `<gIBSCBSMono>` ao inves de `<gIBSCBS>`. Campos obrigatorios:
+
+| Campo | Tipo | Descricao |
+|-------|------|-----------|
+| `qBCMono` | TDec_1104v | Quantidade tributada na base monofasica |
+| `adRemIBS` | TDec_0302a10 | Aliquota ad rem IBS (valor em BRL por unidade) |
+| `vIBSMono` | TDec_1302 | Valor IBS monofasico |
+| `adRemCBS` | TDec_0302a10 | Aliquota ad rem CBS (valor em BRL por unidade) |
+| `vCBSMono` | TDec_1302 | Valor CBS monofasico |
+
+Atributos na entidade `NotaFiscalProduto`: `ibscbs_q_bc_mono`, `ibscbs_ad_rem_ibs`, `ibscbs_v_ibs_mono`, `ibscbs_ad_rem_cbs`, `ibscbs_v_cbs_mono`.
+
+Durante o Teste de Carga 2026 os ad rem ainda nao foram publicados pela SEFAZ, entao os valores podem ser zerados — o grupo `gIBSCBSMono` ainda sera emitido corretamente.
 
 ## CSTs disponiveis
 

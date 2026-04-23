@@ -1046,6 +1046,17 @@ class NotaFiscalProduto(Entidade):
     ibscbs_p_cbs = Decimal()  # pCBS
     ibscbs_v_cbs = Decimal()  # vCBS
 
+    # gIBSCBSMono - Tributacao monofasica (CST 620)
+    # Emitted as <gIBSCBSMono> instead of <gIBSCBS> for CST 620 items.
+    # qBCMono = quantity in monophasic base unit (TDec_1104v)
+    # adRemIBS / adRemCBS = ad rem rate in BRL per unit (TDec_0302a10)
+    # vIBSMono / vCBSMono = final value in BRL
+    ibscbs_q_bc_mono = Decimal()  # qBCMono
+    ibscbs_ad_rem_ibs = Decimal()  # adRemIBS
+    ibscbs_v_ibs_mono = Decimal()  # vIBSMono
+    ibscbs_ad_rem_cbs = Decimal()  # adRemCBS
+    ibscbs_v_cbs_mono = Decimal()  # vCBSMono
+
     # IS (Imposto Seletivo) - Group UB-IS
     is_cst_selec = str()  # CSTSelec (2-digit)
     is_c_class_trib = str()  # cClassTribIS 6-digit

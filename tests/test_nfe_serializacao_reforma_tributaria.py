@@ -668,6 +668,162 @@ class ReformaTributariaSerializacaoTestCase(unittest.TestCase):
         self.assertGreater(cmunfgibs_idx, cmunfg_idx)
 
     # ------------------------------------------------------------------
+    # Test gIBSCBSMono: CST 620 emits monophasic group
+    # ------------------------------------------------------------------
+    def test_cst620_monofasica_emite_gibscbsmono(self):
+        """CST 620 (tributacao monofasica) must emit <gIBSCBSMono> with
+        qBCMono, adRemIBS, vIBSMono, adRemCBS, vCBSMono — NOT <gIBSCBS>."""
+        emitente = self._emitente()
+        cliente = self._cliente()
+        nf = self._nota_fiscal(emitente, cliente)
+
+        kwargs = self._base_product_kwargs()
+        kwargs.update(
+            codigo="010",
+            descricao="GLP em Botijao 13KG (CST 620 monofasica)",
+            ncm="27111910",
+            quantidade_comercial=Decimal("18"),
+            valor_unitario_comercial=Decimal("74.04"),
+            valor_total_bruto=Decimal("1332.72"),
+            quantidade_tributavel=Decimal("18"),
+            valor_unitario_tributavel=Decimal("74.04"),
+            ibscbs_cst="620",
+            ibscbs_c_class_trib="620006",
+            # Monophasic fields
+            ibscbs_q_bc_mono=Decimal("18.0000"),
+            ibscbs_ad_rem_ibs=Decimal("0.0000"),
+            ibscbs_v_ibs_mono=Decimal("0.00"),
+            ibscbs_ad_rem_cbs=Decimal("0.0000"),
+            ibscbs_v_cbs_mono=Decimal("0.00"),
+        )
+        nf.adicionar_produto_servico(**kwargs)
+        nf.adicionar_pagamento(t_pag="01", x_pag="Dinheiro", v_pag=1332.72, ind_pag=0)
+
+        xml = self._serializar_e_assinar()
+
+        # <IBSCBS> is emitted
+        ibscbs = xml.xpath("//ns:det/ns:imposto/ns:IBSCBS", namespaces=self.ns)
+        self.assertEqual(len(ibscbs), 1)
+
+        # CST is 620
+        cst = xml.xpath("//ns:IBSCBS/ns:CST", namespaces=self.ns)[0].text
+        self.assertEqual(cst, "620")
+
+        # cClassTrib is 620006
+        cclass = xml.xpath("//ns:IBSCBS/ns:cClassTrib", namespaces=self.ns)[0].text
+        self.assertEqual(cclass, "620006")
+
+        # <gIBSCBSMono> is emitted
+        gibscbs_mono = xml.xpath("//ns:IBSCBS/ns:gIBSCBSMono", namespaces=self.ns)
+        self.assertEqual(len(gibscbs_mono), 1)
+
+        # <gIBSCBS> is NOT emitted (we use monophasic instead)
+        gibscbs = xml.xpath("//ns:IBSCBS/ns:gIBSCBS", namespaces=self.ns)
+        self.assertEqual(len(gibscbs), 0)
+
+        # Verify the 5 required monophasic fields in correct order
+        q_bc_mono = xml.xpath("//ns:gIBSCBSMono/ns:qBCMono", namespaces=self.ns)[0].text
+        self.assertEqual(q_bc_mono, "18.0000")
+
+        ad_rem_ibs = xml.xpath("//ns:gIBSCBSMono/ns:adRemIBS", namespaces=self.ns)[0].text
+        self.assertEqual(ad_rem_ibs, "0.0000")
+
+        v_ibs_mono = xml.xpath("//ns:gIBSCBSMono/ns:vIBSMono", namespaces=self.ns)[0].text
+        self.assertEqual(v_ibs_mono, "0.00")
+
+        ad_rem_cbs = xml.xpath("//ns:gIBSCBSMono/ns:adRemCBS", namespaces=self.ns)[0].text
+        self.assertEqual(ad_rem_cbs, "0.0000")
+
+        v_cbs_mono = xml.xpath("//ns:gIBSCBSMono/ns:vCBSMono", namespaces=self.ns)[0].text
+        self.assertEqual(v_cbs_mono, "0.00")
+
+        # Field order: qBCMono, adRemIBS, vIBSMono, adRemCBS, vCBSMono
+        mono_elem = gibscbs_mono[0]
+        field_names = [child.tag.split("}")[-1] for child in mono_elem]
+        self.assertEqual(
+            field_names,
+            ["qBCMono", "adRemIBS", "vIBSMono", "adRemCBS", "vCBSMono"],
+        )
+
+    def test_cst620_monofasica_com_valores_calculados(self):
+        """CST 620 with non-zero ad rem rates produces non-zero monophasic values."""
+        emitente = self._emitente()
+        cliente = self._cliente()
+        nf = self._nota_fiscal(emitente, cliente)
+
+        kwargs = self._base_product_kwargs()
+        kwargs.update(
+            codigo="011",
+            descricao="Combustivel monofasico com ad rem",
+            ibscbs_cst="620",
+            ibscbs_c_class_trib="620001",
+            ibscbs_q_bc_mono=Decimal("100.0000"),
+            ibscbs_ad_rem_ibs=Decimal("0.1500"),
+            ibscbs_v_ibs_mono=Decimal("15.00"),
+            ibscbs_ad_rem_cbs=Decimal("0.8500"),
+            ibscbs_v_cbs_mono=Decimal("85.00"),
+        )
+        nf.adicionar_produto_servico(**kwargs)
+        nf.adicionar_pagamento(t_pag="01", x_pag="Dinheiro", v_pag=1000.00, ind_pag=0)
+
+        xml = self._serializar_e_assinar()
+
+        self.assertEqual(
+            xml.xpath("//ns:gIBSCBSMono/ns:qBCMono", namespaces=self.ns)[0].text, "100.0000"
+        )
+        self.assertEqual(
+            xml.xpath("//ns:gIBSCBSMono/ns:adRemIBS", namespaces=self.ns)[0].text, "0.1500"
+        )
+        self.assertEqual(
+            xml.xpath("//ns:gIBSCBSMono/ns:vIBSMono", namespaces=self.ns)[0].text, "15.00"
+        )
+        self.assertEqual(
+            xml.xpath("//ns:gIBSCBSMono/ns:adRemCBS", namespaces=self.ns)[0].text, "0.8500"
+        )
+        self.assertEqual(
+            xml.xpath("//ns:gIBSCBSMono/ns:vCBSMono", namespaces=self.ns)[0].text, "85.00"
+        )
+
+    def test_cst000_nao_emite_gibscbsmono_regressao(self):
+        """Regression test: CST 000 (regular taxation) must still emit <gIBSCBS>
+        and must NOT emit <gIBSCBSMono>."""
+        emitente = self._emitente()
+        cliente = self._cliente()
+        nf = self._nota_fiscal(emitente, cliente)
+
+        kwargs = self._base_product_kwargs()
+        kwargs.update(
+            ibscbs_cst="000",
+            ibscbs_c_class_trib="000001",
+            ibscbs_vbc=Decimal("1000.00"),
+            ibscbs_p_ibs_uf=Decimal("0.1000"),
+            ibscbs_v_ibs_uf=Decimal("1.00"),
+            ibscbs_p_ibs_mun=Decimal("0.0000"),
+            ibscbs_v_ibs_mun=Decimal("0.00"),
+            ibscbs_v_ibs=Decimal("1.00"),
+            ibscbs_p_cbs=Decimal("0.9000"),
+            ibscbs_v_cbs=Decimal("9.00"),
+        )
+        nf.adicionar_produto_servico(**kwargs)
+        nf.adicionar_pagamento(t_pag="01", x_pag="Dinheiro", v_pag=1000.00, ind_pag=0)
+
+        xml = self._serializar_e_assinar()
+
+        # <gIBSCBS> is emitted (regular taxation path unchanged)
+        gibscbs = xml.xpath("//ns:IBSCBS/ns:gIBSCBS", namespaces=self.ns)
+        self.assertEqual(len(gibscbs), 1)
+
+        # <gIBSCBSMono> must NOT be emitted
+        gibscbs_mono = xml.xpath("//ns:IBSCBS/ns:gIBSCBSMono", namespaces=self.ns)
+        self.assertEqual(len(gibscbs_mono), 0)
+
+        # Verify <gIBSCBS> still has pIBSUF/pIBSMun/pCBS (regression)
+        p_ibs_uf = xml.xpath("//ns:gIBSCBS/ns:gIBSUF/ns:pIBSUF", namespaces=self.ns)[0].text
+        self.assertEqual(p_ibs_uf, "0.1000")
+        p_cbs = xml.xpath("//ns:gIBSCBS/ns:gCBS/ns:pCBS", namespaces=self.ns)[0].text
+        self.assertEqual(p_cbs, "0.9000")
+
+    # ------------------------------------------------------------------
     # Test 10: cMunFGIBS NOT emitted when not set
     # ------------------------------------------------------------------
     def test_cmunfgibs_nao_emitido_quando_vazio(self):

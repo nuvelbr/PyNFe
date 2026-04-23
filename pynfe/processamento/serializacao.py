@@ -1387,9 +1387,7 @@ class SerializacaoXML(Serializacao):
         )
 
         # vIBS total
-        etree.SubElement(gibscbs, "vIBS").text = "{:.2f}".format(
-            produto_servico.ibscbs_v_ibs or 0
-        )
+        etree.SubElement(gibscbs, "vIBS").text = "{:.2f}".format(produto_servico.ibscbs_v_ibs or 0)
 
         # gCBS
         gcbs = etree.SubElement(gibscbs, "gCBS")

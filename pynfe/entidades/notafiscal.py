@@ -1051,11 +1051,17 @@ class NotaFiscalProduto(Entidade):
     # qBCMono = quantity in monophasic base unit (TDec_1104v)
     # adRemIBS / adRemCBS = ad rem rate in BRL per unit (TDec_0302a10)
     # vIBSMono / vCBSMono = final value in BRL
+    # vTotIBSMonoItem / vTotCBSMonoItem = item-level mono totals (TDec1302RTC). Per
+    # NT 2025.002-RTC schema TMonofasia, these are REQUIRED siblings of
+    # <gMonoPadrao> inside <gIBSCBSMono> (NOT children of <gMonoPadrao>). For a
+    # single-line item without retencao/diferimento, they equal vIBSMono/vCBSMono.
     ibscbs_q_bc_mono = Decimal()  # qBCMono
     ibscbs_ad_rem_ibs = Decimal()  # adRemIBS
     ibscbs_v_ibs_mono = Decimal()  # vIBSMono
     ibscbs_ad_rem_cbs = Decimal()  # adRemCBS
     ibscbs_v_cbs_mono = Decimal()  # vCBSMono
+    ibscbs_v_tot_ibs_mono_item = Decimal()  # vTotIBSMonoItem
+    ibscbs_v_tot_cbs_mono_item = Decimal()  # vTotCBSMonoItem
 
     # IS (Imposto Seletivo) - Group UB-IS
     is_cst_selec = str()  # CSTSelec (2-digit)

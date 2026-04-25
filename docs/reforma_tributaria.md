@@ -43,7 +43,7 @@ A implementacao cobre:
 
 ### Tributacao monofasica — `gIBSCBSMono`
 
-Para produtos com CST 620 (combustiveis, etc.) o grupo emitido dentro de `<IBSCBS>` e `<gIBSCBSMono>` ao inves de `<gIBSCBS>`. Conforme o schema oficial (`DFeTiposBasicos_v1.00.xsd`, type `TMonofasia`), os cinco campos monofasicos vivem sob o wrapper obrigatorio `<gMonoPadrao>` e na ordem definida pelo schema:
+Para produtos com CST 620 (combustiveis, etc.) o grupo emitido dentro de `<IBSCBS>` e `<gIBSCBSMono>` ao inves de `<gIBSCBS>`. Conforme o schema oficial (`DFeTiposBasicos_v1.00.xsd`, type `TMonofasia`), os cinco campos monofasicos vivem sob o wrapper obrigatorio `<gMonoPadrao>` e na ordem definida pelo schema. Alem disso, `<vTotIBSMonoItem>` e `<vTotCBSMonoItem>` sao SIBLINGS de `<gMonoPadrao>` (NAO filhos) e ambos sao OBRIGATORIOS por schema (sem `minOccurs=0`):
 
 ```xml
 <gIBSCBSMono>
@@ -54,6 +54,8 @@ Para produtos com CST 620 (combustiveis, etc.) o grupo emitido dentro de `<IBSCB
     <vIBSMono>1.80</vIBSMono>
     <vCBSMono>0.00</vCBSMono>
   </gMonoPadrao>
+  <vTotIBSMonoItem>1.80</vTotIBSMonoItem>
+  <vTotCBSMonoItem>0.00</vTotCBSMonoItem>
 </gIBSCBSMono>
 ```
 
@@ -64,8 +66,12 @@ Para produtos com CST 620 (combustiveis, etc.) o grupo emitido dentro de `<IBSCB
 | `adRemCBS` | TDec_0302_04RTC | Aliquota ad rem CBS (valor em BRL por unidade) |
 | `vIBSMono` | TDec1302RTC | Valor IBS monofasico |
 | `vCBSMono` | TDec1302RTC | Valor CBS monofasico |
+| `vTotIBSMonoItem` | TDec1302RTC | Total IBS monofasico do item (sibling de `gMonoPadrao`) |
+| `vTotCBSMonoItem` | TDec1302RTC | Total CBS monofasico do item (sibling de `gMonoPadrao`) |
 
-Atributos na entidade `NotaFiscalProduto`: `ibscbs_q_bc_mono`, `ibscbs_ad_rem_ibs`, `ibscbs_v_ibs_mono`, `ibscbs_ad_rem_cbs`, `ibscbs_v_cbs_mono`.
+Atributos na entidade `NotaFiscalProduto`: `ibscbs_q_bc_mono`, `ibscbs_ad_rem_ibs`, `ibscbs_v_ibs_mono`, `ibscbs_ad_rem_cbs`, `ibscbs_v_cbs_mono`, `ibscbs_v_tot_ibs_mono_item`, `ibscbs_v_tot_cbs_mono_item`.
+
+Para itens single-line (sem retencao / retencao anterior / diferimento), `vTotIBSMonoItem == vIBSMono` e `vTotCBSMonoItem == vCBSMono`. Quando os atributos nao sao informados pelo caller, o serializador emite `0.00` (default seguro durante o Teste de Carga 2026 com ad rem zerados).
 
 Durante o Teste de Carga 2026 os ad rem ainda nao foram publicados pela SEFAZ, entao os valores podem ser zerados — o grupo `gIBSCBSMono` ainda sera emitido corretamente.
 

@@ -43,15 +43,27 @@ A implementacao cobre:
 
 ### Tributacao monofasica — `gIBSCBSMono`
 
-Para produtos com CST 620 (combustiveis, etc.) o grupo emitido dentro de `<IBSCBS>` e `<gIBSCBSMono>` ao inves de `<gIBSCBS>`. Campos obrigatorios:
+Para produtos com CST 620 (combustiveis, etc.) o grupo emitido dentro de `<IBSCBS>` e `<gIBSCBSMono>` ao inves de `<gIBSCBS>`. Conforme o schema oficial (`DFeTiposBasicos_v1.00.xsd`, type `TMonofasia`), os cinco campos monofasicos vivem sob o wrapper obrigatorio `<gMonoPadrao>` e na ordem definida pelo schema:
+
+```xml
+<gIBSCBSMono>
+  <gMonoPadrao>
+    <qBCMono>18.0000</qBCMono>
+    <adRemIBS>0.1000</adRemIBS>
+    <adRemCBS>0.0000</adRemCBS>
+    <vIBSMono>1.80</vIBSMono>
+    <vCBSMono>0.00</vCBSMono>
+  </gMonoPadrao>
+</gIBSCBSMono>
+```
 
 | Campo | Tipo | Descricao |
 |-------|------|-----------|
-| `qBCMono` | TDec_1104v | Quantidade tributada na base monofasica |
-| `adRemIBS` | TDec_0302a10 | Aliquota ad rem IBS (valor em BRL por unidade) |
-| `vIBSMono` | TDec_1302 | Valor IBS monofasico |
-| `adRemCBS` | TDec_0302a10 | Aliquota ad rem CBS (valor em BRL por unidade) |
-| `vCBSMono` | TDec_1302 | Valor CBS monofasico |
+| `qBCMono` | TDec1104RTC | Quantidade tributada na base monofasica |
+| `adRemIBS` | TDec_0302_04RTC | Aliquota ad rem IBS (valor em BRL por unidade) |
+| `adRemCBS` | TDec_0302_04RTC | Aliquota ad rem CBS (valor em BRL por unidade) |
+| `vIBSMono` | TDec1302RTC | Valor IBS monofasico |
+| `vCBSMono` | TDec1302RTC | Valor CBS monofasico |
 
 Atributos na entidade `NotaFiscalProduto`: `ibscbs_q_bc_mono`, `ibscbs_ad_rem_ibs`, `ibscbs_v_ibs_mono`, `ibscbs_ad_rem_cbs`, `ibscbs_v_cbs_mono`.
 

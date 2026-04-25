@@ -1399,9 +1399,10 @@ class SerializacaoXML(Serializacao):
 
         Estrutura obrigatoria por NT 2025.002-RTC (type TMonofasia do
         DFeTiposBasicos_v1.00.xsd, sequencia gMonoPadrao -> gMonoReten ->
-        gMonoRet -> gMonoDif). Para CST 620 "Tributacao monofasica padrao"
-        emitimos apenas <gMonoPadrao> com os cinco campos na ordem do
-        schema:
+        gMonoRet -> gMonoDif -> vTotIBSMonoItem -> vTotCBSMonoItem). Para
+        CST 620 "Tributacao monofasica padrao" emitimos apenas <gMonoPadrao>
+        com os cinco campos na ordem do schema, seguido pelos dois totais
+        item-level que sao REQUERIDOS pelo schema (sem minOccurs=0):
 
             <gIBSCBSMono>
                 <gMonoPadrao>
@@ -1411,16 +1412,22 @@ class SerializacaoXML(Serializacao):
                     <vIBSMono>TDec1302RTC (2 casas)</vIBSMono>
                     <vCBSMono>TDec1302RTC (2 casas)</vCBSMono>
                 </gMonoPadrao>
+                <vTotIBSMonoItem>TDec1302RTC (2 casas)</vTotIBSMonoItem>
+                <vTotCBSMonoItem>TDec1302RTC (2 casas)</vTotCBSMonoItem>
             </gIBSCBSMono>
 
         IMPORTANT:
-        - O wrapper <gMonoPadrao> e obrigatorio. Antes desta correcao o
-          grupo era emitido flat (sem o wrapper) e SEFAZ rejeitava com
-          cStat 225 "Falha no Schema XML da NFe (Elemento:
+        - O wrapper <gMonoPadrao> e obrigatorio. Antes da correcao da
+          DEV-1953 o grupo era emitido flat (sem o wrapper) e SEFAZ
+          rejeitava com cStat 225 "Falha no Schema XML da NFe (Elemento:
           enviNFe/NFe[1]/infNFe/det[1]/imposto/IBSCBS/gIBSCBSMono/qBCMono)".
         - A ordem <adRemCBS> antes de <vIBSMono> segue o schema oficial
           (linhas 701-725 de DFeTiposBasicos_v1.00.xsd). A ordem anterior
           (<vIBSMono> antes de <adRemCBS>) tambem violava o schema.
+        - <vTotIBSMonoItem> e <vTotCBSMonoItem> sao SIBLINGS de
+          <gMonoPadrao> (NAO filhos), ambos OBRIGATORIOS por schema (DEV-1954).
+          Sem eles SEFAZ rejeita com cStat 225 "Falha no Schema XML da NFe
+          (Elemento: ... gIBSCBSMono/)" (barra final indica fechamento).
         """
         gibscbs_mono = etree.SubElement(ibscbs, "gIBSCBSMono")
         gmono_padrao = etree.SubElement(gibscbs_mono, "gMonoPadrao")
@@ -1438,6 +1445,15 @@ class SerializacaoXML(Serializacao):
         )
         etree.SubElement(gmono_padrao, "vCBSMono").text = "{:.2f}".format(
             produto_servico.ibscbs_v_cbs_mono or 0
+        )
+        # vTotIBSMonoItem / vTotCBSMonoItem: required siblings of <gMonoPadrao>
+        # per schema TMonofasia (DEV-1954). For a single-line mono item without
+        # retencao/diferimento, these equal vIBSMono/vCBSMono.
+        etree.SubElement(gibscbs_mono, "vTotIBSMonoItem").text = "{:.2f}".format(
+            produto_servico.ibscbs_v_tot_ibs_mono_item or 0
+        )
+        etree.SubElement(gibscbs_mono, "vTotCBSMonoItem").text = "{:.2f}".format(
+            produto_servico.ibscbs_v_tot_cbs_mono_item or 0
         )
 
     def _serializar_is(self, produto_servico, tag_raiz):

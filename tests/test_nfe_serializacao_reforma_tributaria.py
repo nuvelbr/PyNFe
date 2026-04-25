@@ -672,7 +672,11 @@ class ReformaTributariaSerializacaoTestCase(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cst620_monofasica_emite_gibscbsmono(self):
         """CST 620 (tributacao monofasica) must emit <gIBSCBSMono> with
-        qBCMono, adRemIBS, vIBSMono, adRemCBS, vCBSMono — NOT <gIBSCBS>."""
+        qBCMono, adRemIBS, vIBSMono, adRemCBS, vCBSMono — NOT <gIBSCBS>.
+
+        DEV-1954: also asserts vTotIBSMonoItem / vTotCBSMonoItem siblings of
+        <gMonoPadrao> (required by schema TMonofasia).
+        """
         emitente = self._emitente()
         cliente = self._cliente()
         nf = self._nota_fiscal(emitente, cliente)
@@ -695,6 +699,9 @@ class ReformaTributariaSerializacaoTestCase(unittest.TestCase):
             ibscbs_v_ibs_mono=Decimal("0.00"),
             ibscbs_ad_rem_cbs=Decimal("0.0000"),
             ibscbs_v_cbs_mono=Decimal("0.00"),
+            # Item-level totals (DEV-1954) - required siblings of <gMonoPadrao>
+            ibscbs_v_tot_ibs_mono_item=Decimal("0.00"),
+            ibscbs_v_tot_cbs_mono_item=Decimal("0.00"),
         )
         nf.adicionar_produto_servico(**kwargs)
         nf.adicionar_pagamento(t_pag="01", x_pag="Dinheiro", v_pag=1332.72, ind_pag=0)
@@ -750,8 +757,37 @@ class ReformaTributariaSerializacaoTestCase(unittest.TestCase):
             ["qBCMono", "adRemIBS", "adRemCBS", "vIBSMono", "vCBSMono"],
         )
 
+        # DEV-1954: vTotIBSMonoItem / vTotCBSMonoItem must be SIBLINGS of
+        # <gMonoPadrao> (children of <gIBSCBSMono>) — NOT children of
+        # <gMonoPadrao>. Both are REQUIRED by schema TMonofasia.
+        v_tot_ibs = xml.xpath("//ns:IBSCBS/ns:gIBSCBSMono/ns:vTotIBSMonoItem", namespaces=self.ns)
+        self.assertEqual(len(v_tot_ibs), 1)
+        self.assertEqual(v_tot_ibs[0].text, "0.00")
+        v_tot_cbs = xml.xpath("//ns:IBSCBS/ns:gIBSCBSMono/ns:vTotCBSMonoItem", namespaces=self.ns)
+        self.assertEqual(len(v_tot_cbs), 1)
+        self.assertEqual(v_tot_cbs[0].text, "0.00")
+
+        # Totals must NOT be children of <gMonoPadrao> (common misreading of schema)
+        wrong_v_tot_ibs = xml.xpath("//ns:gMonoPadrao/ns:vTotIBSMonoItem", namespaces=self.ns)
+        self.assertEqual(len(wrong_v_tot_ibs), 0)
+        wrong_v_tot_cbs = xml.xpath("//ns:gMonoPadrao/ns:vTotCBSMonoItem", namespaces=self.ns)
+        self.assertEqual(len(wrong_v_tot_cbs), 0)
+
+        # Direct children of <gIBSCBSMono> must be in schema order:
+        # gMonoPadrao -> vTotIBSMonoItem -> vTotCBSMonoItem
+        gibscbs_mono_elem = gibscbs_mono[0]
+        direct_children = [child.tag.split("}")[-1] for child in gibscbs_mono_elem]
+        self.assertEqual(
+            direct_children,
+            ["gMonoPadrao", "vTotIBSMonoItem", "vTotCBSMonoItem"],
+        )
+
     def test_cst620_monofasica_com_valores_calculados(self):
-        """CST 620 with non-zero ad rem rates produces non-zero monophasic values."""
+        """CST 620 with non-zero ad rem rates produces non-zero monophasic values.
+
+        DEV-1954: For a single-line item without retencao/diferimento,
+        vTotIBSMonoItem == vIBSMono and vTotCBSMonoItem == vCBSMono.
+        """
         emitente = self._emitente()
         cliente = self._cliente()
         nf = self._nota_fiscal(emitente, cliente)
@@ -767,6 +803,9 @@ class ReformaTributariaSerializacaoTestCase(unittest.TestCase):
             ibscbs_v_ibs_mono=Decimal("15.00"),
             ibscbs_ad_rem_cbs=Decimal("0.8500"),
             ibscbs_v_cbs_mono=Decimal("85.00"),
+            # Item-level totals equal the mono values for single-line items
+            ibscbs_v_tot_ibs_mono_item=Decimal("15.00"),
+            ibscbs_v_tot_cbs_mono_item=Decimal("85.00"),
         )
         nf.adicionar_produto_servico(**kwargs)
         nf.adicionar_pagamento(t_pag="01", x_pag="Dinheiro", v_pag=1000.00, ind_pag=0)
@@ -789,6 +828,52 @@ class ReformaTributariaSerializacaoTestCase(unittest.TestCase):
         self.assertEqual(
             xml.xpath("//ns:gMonoPadrao/ns:vCBSMono", namespaces=self.ns)[0].text, "85.00"
         )
+        # DEV-1954: item-level totals equal the mono values for single-line items
+        self.assertEqual(
+            xml.xpath("//ns:IBSCBS/ns:gIBSCBSMono/ns:vTotIBSMonoItem", namespaces=self.ns)[0].text,
+            "15.00",
+        )
+        self.assertEqual(
+            xml.xpath("//ns:IBSCBS/ns:gIBSCBSMono/ns:vTotCBSMonoItem", namespaces=self.ns)[0].text,
+            "85.00",
+        )
+
+    def test_cst620_v_tot_mono_item_default_zero_when_unset(self):
+        """DEV-1954: vTotIBSMonoItem / vTotCBSMonoItem default to 0.00 when not provided.
+
+        Both are REQUIRED by schema TMonofasia (no minOccurs=0). Falling back
+        to 0 keeps the XML schema-valid even when callers forget to set them.
+        """
+        emitente = self._emitente()
+        cliente = self._cliente()
+        nf = self._nota_fiscal(emitente, cliente)
+
+        kwargs = self._base_product_kwargs()
+        kwargs.update(
+            codigo="012",
+            descricao="Combustivel monofasico sem totais explicitos",
+            ibscbs_cst="620",
+            ibscbs_c_class_trib="620006",
+            ibscbs_q_bc_mono=Decimal("18.0000"),
+            ibscbs_ad_rem_ibs=Decimal("0.0000"),
+            ibscbs_v_ibs_mono=Decimal("0.00"),
+            ibscbs_ad_rem_cbs=Decimal("0.0000"),
+            ibscbs_v_cbs_mono=Decimal("0.00"),
+            # NOTE: ibscbs_v_tot_ibs_mono_item / ibscbs_v_tot_cbs_mono_item NOT set
+        )
+        nf.adicionar_produto_servico(**kwargs)
+        nf.adicionar_pagamento(t_pag="01", x_pag="Dinheiro", v_pag=1332.72, ind_pag=0)
+
+        xml = self._serializar_e_assinar()
+
+        # Both totals MUST be emitted as direct children of <gIBSCBSMono>
+        # with the schema-required default of 0.00.
+        v_tot_ibs = xml.xpath("//ns:IBSCBS/ns:gIBSCBSMono/ns:vTotIBSMonoItem", namespaces=self.ns)
+        self.assertEqual(len(v_tot_ibs), 1)
+        self.assertEqual(v_tot_ibs[0].text, "0.00")
+        v_tot_cbs = xml.xpath("//ns:IBSCBS/ns:gIBSCBSMono/ns:vTotCBSMonoItem", namespaces=self.ns)
+        self.assertEqual(len(v_tot_cbs), 1)
+        self.assertEqual(v_tot_cbs[0].text, "0.00")
 
     def test_cst000_nao_emite_gibscbsmono_regressao(self):
         """Regression test: CST 000 (regular taxation) must still emit <gIBSCBS>

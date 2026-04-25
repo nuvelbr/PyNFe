@@ -713,36 +713,41 @@ class ReformaTributariaSerializacaoTestCase(unittest.TestCase):
         cclass = xml.xpath("//ns:IBSCBS/ns:cClassTrib", namespaces=self.ns)[0].text
         self.assertEqual(cclass, "620006")
 
-        # <gIBSCBSMono> is emitted
+        # <gIBSCBSMono> is emitted with <gMonoPadrao> wrapper (NT 2025.002-RTC)
         gibscbs_mono = xml.xpath("//ns:IBSCBS/ns:gIBSCBSMono", namespaces=self.ns)
         self.assertEqual(len(gibscbs_mono), 1)
+
+        gmono_padrao = xml.xpath("//ns:IBSCBS/ns:gIBSCBSMono/ns:gMonoPadrao", namespaces=self.ns)
+        self.assertEqual(len(gmono_padrao), 1)
 
         # <gIBSCBS> is NOT emitted (we use monophasic instead)
         gibscbs = xml.xpath("//ns:IBSCBS/ns:gIBSCBS", namespaces=self.ns)
         self.assertEqual(len(gibscbs), 0)
 
         # Verify the 5 required monophasic fields in correct order
-        q_bc_mono = xml.xpath("//ns:gIBSCBSMono/ns:qBCMono", namespaces=self.ns)[0].text
+        q_bc_mono = xml.xpath("//ns:gMonoPadrao/ns:qBCMono", namespaces=self.ns)[0].text
         self.assertEqual(q_bc_mono, "18.0000")
 
-        ad_rem_ibs = xml.xpath("//ns:gIBSCBSMono/ns:adRemIBS", namespaces=self.ns)[0].text
+        ad_rem_ibs = xml.xpath("//ns:gMonoPadrao/ns:adRemIBS", namespaces=self.ns)[0].text
         self.assertEqual(ad_rem_ibs, "0.0000")
 
-        v_ibs_mono = xml.xpath("//ns:gIBSCBSMono/ns:vIBSMono", namespaces=self.ns)[0].text
+        v_ibs_mono = xml.xpath("//ns:gMonoPadrao/ns:vIBSMono", namespaces=self.ns)[0].text
         self.assertEqual(v_ibs_mono, "0.00")
 
-        ad_rem_cbs = xml.xpath("//ns:gIBSCBSMono/ns:adRemCBS", namespaces=self.ns)[0].text
+        ad_rem_cbs = xml.xpath("//ns:gMonoPadrao/ns:adRemCBS", namespaces=self.ns)[0].text
         self.assertEqual(ad_rem_cbs, "0.0000")
 
-        v_cbs_mono = xml.xpath("//ns:gIBSCBSMono/ns:vCBSMono", namespaces=self.ns)[0].text
+        v_cbs_mono = xml.xpath("//ns:gMonoPadrao/ns:vCBSMono", namespaces=self.ns)[0].text
         self.assertEqual(v_cbs_mono, "0.00")
 
-        # Field order: qBCMono, adRemIBS, vIBSMono, adRemCBS, vCBSMono
-        mono_elem = gibscbs_mono[0]
-        field_names = [child.tag.split("}")[-1] for child in mono_elem]
+        # Field order per schema TMonofasia/gMonoPadrao:
+        # qBCMono, adRemIBS, adRemCBS, vIBSMono, vCBSMono
+        # (adRemCBS must come BEFORE vIBSMono per DFeTiposBasicos_v1.00.xsd)
+        padrao_elem = gmono_padrao[0]
+        field_names = [child.tag.split("}")[-1] for child in padrao_elem]
         self.assertEqual(
             field_names,
-            ["qBCMono", "adRemIBS", "vIBSMono", "adRemCBS", "vCBSMono"],
+            ["qBCMono", "adRemIBS", "adRemCBS", "vIBSMono", "vCBSMono"],
         )
 
     def test_cst620_monofasica_com_valores_calculados(self):
@@ -768,20 +773,21 @@ class ReformaTributariaSerializacaoTestCase(unittest.TestCase):
 
         xml = self._serializar_e_assinar()
 
+        # Values live under <gIBSCBSMono>/<gMonoPadrao> per NT 2025.002-RTC
         self.assertEqual(
-            xml.xpath("//ns:gIBSCBSMono/ns:qBCMono", namespaces=self.ns)[0].text, "100.0000"
+            xml.xpath("//ns:gMonoPadrao/ns:qBCMono", namespaces=self.ns)[0].text, "100.0000"
         )
         self.assertEqual(
-            xml.xpath("//ns:gIBSCBSMono/ns:adRemIBS", namespaces=self.ns)[0].text, "0.1500"
+            xml.xpath("//ns:gMonoPadrao/ns:adRemIBS", namespaces=self.ns)[0].text, "0.1500"
         )
         self.assertEqual(
-            xml.xpath("//ns:gIBSCBSMono/ns:vIBSMono", namespaces=self.ns)[0].text, "15.00"
+            xml.xpath("//ns:gMonoPadrao/ns:vIBSMono", namespaces=self.ns)[0].text, "15.00"
         )
         self.assertEqual(
-            xml.xpath("//ns:gIBSCBSMono/ns:adRemCBS", namespaces=self.ns)[0].text, "0.8500"
+            xml.xpath("//ns:gMonoPadrao/ns:adRemCBS", namespaces=self.ns)[0].text, "0.8500"
         )
         self.assertEqual(
-            xml.xpath("//ns:gIBSCBSMono/ns:vCBSMono", namespaces=self.ns)[0].text, "85.00"
+            xml.xpath("//ns:gMonoPadrao/ns:vCBSMono", namespaces=self.ns)[0].text, "85.00"
         )
 
     def test_cst000_nao_emite_gibscbsmono_regressao(self):

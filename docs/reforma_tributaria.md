@@ -335,13 +335,22 @@ Os totais ficam em um grupo **separado** de `<ICMSTot>`, como irmao dentro de `<
       <vCredPres>0.00</vCredPres>
       <vCredPresCondSus>0.00</vCredPresCondSus>
     </gCBS>
-    <!-- gMono: totais monofasia (nao implementado) -->
+    <gMono>                                <!-- Totais monofasia (DEV-1955) -->
+      <vIBSMono>0.00</vIBSMono>            <!-- Total IBS monofasico padrao -->
+      <vCBSMono>0.00</vCBSMono>            <!-- Total CBS monofasica padrao -->
+      <vIBSMonoReten>0.00</vIBSMonoReten>  <!-- Total IBS monofasico sujeito a retencao -->
+      <vCBSMonoReten>0.00</vCBSMonoReten>  <!-- Total CBS monofasica sujeita a retencao -->
+      <vIBSMonoRet>0.00</vIBSMonoRet>      <!-- Total IBS monofasico retido anteriormente -->
+      <vCBSMonoRet>0.00</vCBSMonoRet>      <!-- Total CBS monofasica retida anteriormente -->
+    </gMono>
     <!-- gEstornoCred: totais estorno de credito (nao implementado) -->
   </IBSCBSTot>
 </total>
 ```
 
 > Os subgrupos `gIBS` e `gCBS` sao opcionais (`minOccurs="0"`) — emitidos apenas quando ha valores. Os campos `vDif`, `vDevTrib`, `vCredPres` e `vCredPresCondSus` sao obrigatorios dentro de cada subgrupo (emitidos como "0.00" quando nao utilizados).
+>
+> O subgrupo `gMono` e opcional, mas obrigatorio sempre que algum item da NF-e carregar `<gIBSCBSMono>` (CST 620, etc.). Quando emitido, **todos os seis filhos** sao obrigatorios (`vIBSMono`, `vCBSMono`, `vIBSMonoReten`, `vCBSMonoReten`, `vIBSMonoRet`, `vCBSMonoRet`). Omitir `<gMono>` em uma NF-e com items monofasicos faz a SEFAZ rejeitar com `cStat 1119 - "Total de IBS e CBS nao informado"`. Os totais `Reten`/`Ret` ainda nao sao acumulados a nivel de item (PyNFe ainda so emite `<gMonoPadrao>`), entao serao "0.00" ate que `<gMonoReten>` / `<gMonoRet>` / `<gMonoDif>` sejam suportados a nivel de item.
 
 ### Cabecalho — `cMunFGIBS` no `<ide>`
 
@@ -373,7 +382,7 @@ Esses CSTs geram apenas `<CST>` e `<cClassTrib>`, sem `<gIBSCBS>`.
 
 - **`cClassTrib`**: Emitido quando informado (campo obrigatorio na pratica)
 - **`cMunFGIBS`**: Emitido no `<ide>` apenas quando informado
-- **`<IBSCBSTot>`**: Tipo `TIBSCBSMonoTot`. Omitido se todos os totais forem zero. Quando emitido, `vBCIBSCBS` e obrigatorio como primeiro filho; `gIBS` e `gCBS` sao opcionais
+- **`<IBSCBSTot>`**: Tipo `TIBSCBSMonoTot`. Omitido se todos os totais forem zero E nenhum item carregar `<gIBSCBSMono>`. Quando emitido, `vBCIBSCBS` e obrigatorio como primeiro filho; `gIBS`, `gCBS` e `gMono` sao opcionais (mas `gMono` e obrigatorio sempre que houver items monofasicos)
 - **`<IBSCBS>`**: Tipo `TTribNFe`. Omitido completamente se `ibscbs_cst` nao for informado
 - **IS (`<IS>`)**: Tipo `TIS`. **Nao emitido no XML** — serializacao desabilitada ate 2027
 - **`<ISTot>`**: Tipo `TISTot`. **Nao emitido** — sera irmao de `<IBSCBSTot>` (antes dele no schema)

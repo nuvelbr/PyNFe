@@ -1875,8 +1875,17 @@ class SerializacaoXML(Serializacao):
 
         # Reforma Tributaria - Totais IVA Dual (Group W03 - IBSCBSTot)
         # Type: TIBSCBSMonoTot (PL 010b DFeTiposBasicos_v1.00.xsd)
+        # ``has_mono`` is true when at least one item routed to <gIBSCBSMono>:
+        # SEFAZ rejects with cStat 1119 ("Total de IBS e CBS nao informado")
+        # when items emit monofasia but the IBSCBSTot/gMono total is missing.
+        # During Teste de Carga 2026, every ad rem is zero so the regular
+        # accumulators stay at 0 — the count flag forces emission anyway.
+        has_mono = nota_fiscal.totais_mono_item_count > 0
         has_reforma = (
-            nota_fiscal.totais_vbc_ibscbs or nota_fiscal.totais_ibs or nota_fiscal.totais_cbs
+            nota_fiscal.totais_vbc_ibscbs
+            or nota_fiscal.totais_ibs
+            or nota_fiscal.totais_cbs
+            or has_mono
         )
         if has_reforma:
             ibscbs_tot = etree.SubElement(total, "IBSCBSTot")
@@ -1915,7 +1924,35 @@ class SerializacaoXML(Serializacao):
                 etree.SubElement(g_cbs, "vCredPres").text = "0.00"
                 etree.SubElement(g_cbs, "vCredPresCondSus").text = "0.00"
 
-            # gMono: not implemented yet (monofasia totals)
+            # gMono — totals da monofasia (DEV-1955)
+            # Per NT 2025.002-RTC schema TIBSCBSMonoTot, the <gMono> wrapper is
+            # itself optional (minOccurs=0) but, when present, ALL six children
+            # are REQUIRED (no minOccurs=0 inside). SEFAZ requires <gMono>
+            # whenever the NF-e contains items with <gIBSCBSMono>; omitting it
+            # raises cStat 1119 ("Total de IBS e CBS nao informado"). For the
+            # Teste de Carga 2026 scenario every value is "0.00", but the
+            # block itself must still be emitted.
+            if has_mono:
+                g_mono = etree.SubElement(ibscbs_tot, "gMono")
+                etree.SubElement(g_mono, "vIBSMono").text = "{:.2f}".format(
+                    nota_fiscal.totais_v_ibs_mono
+                )
+                etree.SubElement(g_mono, "vCBSMono").text = "{:.2f}".format(
+                    nota_fiscal.totais_v_cbs_mono
+                )
+                etree.SubElement(g_mono, "vIBSMonoReten").text = "{:.2f}".format(
+                    nota_fiscal.totais_v_ibs_mono_reten
+                )
+                etree.SubElement(g_mono, "vCBSMonoReten").text = "{:.2f}".format(
+                    nota_fiscal.totais_v_cbs_mono_reten
+                )
+                etree.SubElement(g_mono, "vIBSMonoRet").text = "{:.2f}".format(
+                    nota_fiscal.totais_v_ibs_mono_ret
+                )
+                etree.SubElement(g_mono, "vCBSMonoRet").text = "{:.2f}".format(
+                    nota_fiscal.totais_v_cbs_mono_ret
+                )
+
             # gEstornoCred: not implemented yet (estorno de credito totals)
 
         # Transporte

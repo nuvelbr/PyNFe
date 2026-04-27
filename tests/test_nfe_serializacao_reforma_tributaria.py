@@ -915,6 +915,227 @@ class ReformaTributariaSerializacaoTestCase(unittest.TestCase):
         self.assertEqual(p_cbs, "0.9000")
 
     # ------------------------------------------------------------------
+    # DEV-1955 — IBSCBSTot/<gMono> totals when items carry <gIBSCBSMono>
+    # ------------------------------------------------------------------
+    def test_ibscbstot_gmono_emitido_para_item_monofasico_unico(self):
+        """A NF-e with a single <gIBSCBSMono> item must emit IBSCBSTot/<gMono>.
+
+        Reproduces the cliente E B DA FONSECA (DEV-1955) scenario: GLP em Botijao
+        13KG, qtde 18, CST 620, cClassTrib 620006, all ad-rem zero (Teste de Carga
+        2026). Before the fix, the IBSCBSTot wrapper was suppressed entirely
+        (because totais_vbc_ibscbs / totais_ibs / totais_cbs were all 0) and
+        SEFAZ rejected with cStat 1119 "Total de IBS e CBS nao informado".
+        """
+        emitente = self._emitente()
+        cliente = self._cliente()
+        nf = self._nota_fiscal(emitente, cliente)
+
+        kwargs = self._base_product_kwargs()
+        kwargs.update(
+            codigo="020",
+            descricao="GLP em Botijao 13KG",
+            ncm="27111910",
+            quantidade_comercial=Decimal("18"),
+            valor_unitario_comercial=Decimal("74.04"),
+            valor_total_bruto=Decimal("1332.72"),
+            quantidade_tributavel=Decimal("18"),
+            valor_unitario_tributavel=Decimal("74.04"),
+            ibscbs_cst="620",
+            ibscbs_c_class_trib="620006",
+            ibscbs_q_bc_mono=Decimal("18.0000"),
+            ibscbs_ad_rem_ibs=Decimal("0.0000"),
+            ibscbs_v_ibs_mono=Decimal("0.00"),
+            ibscbs_ad_rem_cbs=Decimal("0.0000"),
+            ibscbs_v_cbs_mono=Decimal("0.00"),
+            ibscbs_v_tot_ibs_mono_item=Decimal("0.00"),
+            ibscbs_v_tot_cbs_mono_item=Decimal("0.00"),
+        )
+        nf.adicionar_produto_servico(**kwargs)
+        nf.adicionar_pagamento(t_pag="01", x_pag="Dinheiro", v_pag=1332.72, ind_pag=0)
+
+        xml = self._serializar_e_assinar()
+
+        # IBSCBSTot must be present even when standard totals are zero, because
+        # at least one item carries <gIBSCBSMono>.
+        ibscbs_tot = xml.xpath("//ns:total/ns:IBSCBSTot", namespaces=self.ns)
+        self.assertEqual(len(ibscbs_tot), 1)
+
+        # gMono inside IBSCBSTot must contain the six required TDec1302RTC fields,
+        # all "0.00" for the Teste de Carga scenario.
+        g_mono = xml.xpath("//ns:IBSCBSTot/ns:gMono", namespaces=self.ns)
+        self.assertEqual(len(g_mono), 1)
+
+        v_ibs_mono = xml.xpath("//ns:IBSCBSTot/ns:gMono/ns:vIBSMono", namespaces=self.ns)
+        self.assertEqual(len(v_ibs_mono), 1)
+        self.assertEqual(v_ibs_mono[0].text, "0.00")
+
+        v_cbs_mono = xml.xpath("//ns:IBSCBSTot/ns:gMono/ns:vCBSMono", namespaces=self.ns)
+        self.assertEqual(v_cbs_mono[0].text, "0.00")
+
+        # Reten/Ret children are required by schema TIBSCBSMonoTot/gMono even
+        # when the items only carry <gMonoPadrao> (PyNFe item-level Reten/Ret
+        # serialization is not implemented yet — totals stay at zero).
+        v_ibs_mono_reten = xml.xpath("//ns:IBSCBSTot/ns:gMono/ns:vIBSMonoReten", namespaces=self.ns)
+        self.assertEqual(v_ibs_mono_reten[0].text, "0.00")
+        v_cbs_mono_reten = xml.xpath("//ns:IBSCBSTot/ns:gMono/ns:vCBSMonoReten", namespaces=self.ns)
+        self.assertEqual(v_cbs_mono_reten[0].text, "0.00")
+        v_ibs_mono_ret = xml.xpath("//ns:IBSCBSTot/ns:gMono/ns:vIBSMonoRet", namespaces=self.ns)
+        self.assertEqual(v_ibs_mono_ret[0].text, "0.00")
+        v_cbs_mono_ret = xml.xpath("//ns:IBSCBSTot/ns:gMono/ns:vCBSMonoRet", namespaces=self.ns)
+        self.assertEqual(v_cbs_mono_ret[0].text, "0.00")
+
+        # Field order must match TIBSCBSMonoTot/gMono per
+        # DFeTiposBasicos_v1.00.xsd: vIBSMono -> vCBSMono -> vIBSMonoReten ->
+        # vCBSMonoReten -> vIBSMonoRet -> vCBSMonoRet.
+        gmono_elem = g_mono[0]
+        gmono_children = [child.tag.split("}")[-1] for child in gmono_elem]
+        self.assertEqual(
+            gmono_children,
+            [
+                "vIBSMono",
+                "vCBSMono",
+                "vIBSMonoReten",
+                "vCBSMonoReten",
+                "vIBSMonoRet",
+                "vCBSMonoRet",
+            ],
+        )
+
+    def test_ibscbstot_gmono_soma_multiplos_itens_monofasicos(self):
+        """Two <gIBSCBSMono> items must sum into IBSCBSTot/<gMono>/<vIBSMono>."""
+        emitente = self._emitente()
+        cliente = self._cliente()
+        nf = self._nota_fiscal(emitente, cliente)
+
+        item1 = self._base_product_kwargs()
+        item1.update(
+            codigo="021",
+            descricao="Combustivel mono A",
+            ibscbs_cst="620",
+            ibscbs_c_class_trib="620001",
+            ibscbs_q_bc_mono=Decimal("100.0000"),
+            ibscbs_ad_rem_ibs=Decimal("0.1500"),
+            ibscbs_v_ibs_mono=Decimal("15.00"),
+            ibscbs_ad_rem_cbs=Decimal("0.8500"),
+            ibscbs_v_cbs_mono=Decimal("85.00"),
+            ibscbs_v_tot_ibs_mono_item=Decimal("15.00"),
+            ibscbs_v_tot_cbs_mono_item=Decimal("85.00"),
+        )
+        item2 = self._base_product_kwargs()
+        item2.update(
+            codigo="022",
+            descricao="Combustivel mono B",
+            ibscbs_cst="620",
+            ibscbs_c_class_trib="620002",
+            ibscbs_q_bc_mono=Decimal("50.0000"),
+            ibscbs_ad_rem_ibs=Decimal("0.2000"),
+            ibscbs_v_ibs_mono=Decimal("10.00"),
+            ibscbs_ad_rem_cbs=Decimal("0.4000"),
+            ibscbs_v_cbs_mono=Decimal("20.00"),
+            ibscbs_v_tot_ibs_mono_item=Decimal("10.00"),
+            ibscbs_v_tot_cbs_mono_item=Decimal("20.00"),
+        )
+        nf.adicionar_produto_servico(**item1)
+        nf.adicionar_produto_servico(**item2)
+        nf.adicionar_pagamento(t_pag="01", x_pag="Dinheiro", v_pag=2000.00, ind_pag=0)
+
+        xml = self._serializar_e_assinar()
+
+        v_ibs_mono = xml.xpath("//ns:IBSCBSTot/ns:gMono/ns:vIBSMono", namespaces=self.ns)
+        self.assertEqual(v_ibs_mono[0].text, "25.00")  # 15.00 + 10.00
+        v_cbs_mono = xml.xpath("//ns:IBSCBSTot/ns:gMono/ns:vCBSMono", namespaces=self.ns)
+        self.assertEqual(v_cbs_mono[0].text, "105.00")  # 85.00 + 20.00
+
+    def test_ibscbstot_sem_gmono_quando_so_itens_padrao(self):
+        """Pure standard NF-e (no <gIBSCBSMono> items) must NOT emit <gMono>."""
+        emitente = self._emitente()
+        cliente = self._cliente()
+        nf = self._nota_fiscal(emitente, cliente)
+
+        kwargs = self._base_product_kwargs()
+        kwargs.update(
+            ibscbs_cst="000",
+            ibscbs_c_class_trib="000001",
+            ibscbs_vbc=Decimal("1000.00"),
+            ibscbs_p_ibs_uf=Decimal("0.1000"),
+            ibscbs_v_ibs_uf=Decimal("1.00"),
+            ibscbs_p_ibs_mun=Decimal("0.0000"),
+            ibscbs_v_ibs_mun=Decimal("0.00"),
+            ibscbs_v_ibs=Decimal("1.00"),
+            ibscbs_p_cbs=Decimal("0.9000"),
+            ibscbs_v_cbs=Decimal("9.00"),
+        )
+        nf.adicionar_produto_servico(**kwargs)
+        nf.adicionar_pagamento(t_pag="01", x_pag="Dinheiro", v_pag=1000.00, ind_pag=0)
+
+        xml = self._serializar_e_assinar()
+
+        # IBSCBSTot is present (we have standard reforma values)
+        ibscbs_tot = xml.xpath("//ns:total/ns:IBSCBSTot", namespaces=self.ns)
+        self.assertEqual(len(ibscbs_tot), 1)
+        # But gMono must NOT be there for a pure-standard NF-e
+        g_mono = xml.xpath("//ns:IBSCBSTot/ns:gMono", namespaces=self.ns)
+        self.assertEqual(len(g_mono), 0)
+
+    def test_ibscbstot_misto_emite_gibs_gcbs_e_gmono(self):
+        """Mixed NF-e (1 standard + 1 mono) emits gIBS, gCBS AND gMono."""
+        emitente = self._emitente()
+        cliente = self._cliente()
+        nf = self._nota_fiscal(emitente, cliente)
+
+        item_padrao = self._base_product_kwargs()
+        item_padrao.update(
+            codigo="030",
+            descricao="Item padrao",
+            ibscbs_cst="000",
+            ibscbs_c_class_trib="000001",
+            ibscbs_vbc=Decimal("1000.00"),
+            ibscbs_p_ibs_uf=Decimal("0.1000"),
+            ibscbs_v_ibs_uf=Decimal("1.00"),
+            ibscbs_p_ibs_mun=Decimal("0.0000"),
+            ibscbs_v_ibs_mun=Decimal("0.00"),
+            ibscbs_v_ibs=Decimal("1.00"),
+            ibscbs_p_cbs=Decimal("0.9000"),
+            ibscbs_v_cbs=Decimal("9.00"),
+        )
+        item_mono = self._base_product_kwargs()
+        item_mono.update(
+            codigo="031",
+            descricao="Item monofasico",
+            ibscbs_cst="620",
+            ibscbs_c_class_trib="620001",
+            ibscbs_q_bc_mono=Decimal("10.0000"),
+            ibscbs_ad_rem_ibs=Decimal("0.5000"),
+            ibscbs_v_ibs_mono=Decimal("5.00"),
+            ibscbs_ad_rem_cbs=Decimal("1.0000"),
+            ibscbs_v_cbs_mono=Decimal("10.00"),
+            ibscbs_v_tot_ibs_mono_item=Decimal("5.00"),
+            ibscbs_v_tot_cbs_mono_item=Decimal("10.00"),
+        )
+        nf.adicionar_produto_servico(**item_padrao)
+        nf.adicionar_produto_servico(**item_mono)
+        nf.adicionar_pagamento(t_pag="01", x_pag="Dinheiro", v_pag=2000.00, ind_pag=0)
+
+        xml = self._serializar_e_assinar()
+
+        # Standard groups present (gIBS, gCBS) AND gMono present
+        self.assertEqual(len(xml.xpath("//ns:IBSCBSTot/ns:gIBS", namespaces=self.ns)), 1)
+        self.assertEqual(len(xml.xpath("//ns:IBSCBSTot/ns:gCBS", namespaces=self.ns)), 1)
+        self.assertEqual(len(xml.xpath("//ns:IBSCBSTot/ns:gMono", namespaces=self.ns)), 1)
+
+        # gMono carries the mono item totals
+        v_ibs_mono = xml.xpath("//ns:IBSCBSTot/ns:gMono/ns:vIBSMono", namespaces=self.ns)
+        self.assertEqual(v_ibs_mono[0].text, "5.00")
+        v_cbs_mono = xml.xpath("//ns:IBSCBSTot/ns:gMono/ns:vCBSMono", namespaces=self.ns)
+        self.assertEqual(v_cbs_mono[0].text, "10.00")
+
+        # IBSCBSTot direct-child order per TIBSCBSMonoTot:
+        # vBCIBSCBS -> gIBS -> gCBS -> gMono (gEstornoCred not implemented)
+        ibscbs_tot_elem = xml.xpath("//ns:IBSCBSTot", namespaces=self.ns)[0]
+        ibscbs_tot_children = [child.tag.split("}")[-1] for child in ibscbs_tot_elem]
+        self.assertEqual(ibscbs_tot_children, ["vBCIBSCBS", "gIBS", "gCBS", "gMono"])
+
+    # ------------------------------------------------------------------
     # Test 10: cMunFGIBS NOT emitted when not set
     # ------------------------------------------------------------------
     def test_cmunfgibs_nao_emitido_quando_vazio(self):

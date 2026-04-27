@@ -1879,7 +1879,7 @@ class SerializacaoXML(Serializacao):
         # SEFAZ rejects with cStat 1119 ("Total de IBS e CBS nao informado")
         # when items emit monofasia but the IBSCBSTot/gMono total is missing.
         # During Teste de Carga 2026, every ad rem is zero so the regular
-        # accumulators stay at 0 — the count flag forces emission anyway.
+        # accumulators stay at 0; the count flag forces emission anyway.
         has_mono = nota_fiscal.totais_mono_item_count > 0
         has_reforma = (
             nota_fiscal.totais_vbc_ibscbs
@@ -1924,7 +1924,7 @@ class SerializacaoXML(Serializacao):
                 etree.SubElement(g_cbs, "vCredPres").text = "0.00"
                 etree.SubElement(g_cbs, "vCredPresCondSus").text = "0.00"
 
-            # gMono — totals da monofasia (DEV-1955)
+            # gMono - totals da monofasia (DEV-1955)
             # Per NT 2025.002-RTC schema TIBSCBSMonoTot, the <gMono> wrapper is
             # itself optional (minOccurs=0) but, when present, ALL six children
             # are REQUIRED (no minOccurs=0 inside). SEFAZ requires <gMono>

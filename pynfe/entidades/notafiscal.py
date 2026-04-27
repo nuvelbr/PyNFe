@@ -511,7 +511,7 @@ class NotaFiscal(Entidade):
         # Aggregate item-level vTotIBSMonoItem / vTotCBSMonoItem so the
         # serializer can emit <gMono> with the required totals. PyNFe today
         # only supports <gMonoPadrao> at item level (see _serializar_gibscbs_mono),
-        # so the Reten/Ret accumulators stay at zero — but the schema requires
+        # so the Reten/Ret accumulators stay at zero, but the schema requires
         # all six fields to be emitted whenever <gMono> is present, so they
         # are kept here to align with TIBSCBSMonoTot/gMono.
         # ``totais_mono_item_count`` is incremented when CST routes to mono,

@@ -2561,7 +2561,9 @@ class SerializacaoMDFe(Serializacao):
                     etree.SubElement(infCIOT, "CNPJ").text = item.cpfcnpj
 
         # Vale Pedágio
-        if modal_rodoviario.pedagio is not None:
+        # valePed must be omitted when there are no disp entries: an empty
+        # <valePed/> is rejected by the MDF-e modal schema (cStat 580).
+        if modal_rodoviario.pedagio:
             valePed = etree.SubElement(infANTT, "valePed")
             for num, item in enumerate(modal_rodoviario.pedagio):
                 disp = etree.SubElement(valePed, "disp")
@@ -2592,6 +2594,11 @@ class SerializacaoMDFe(Serializacao):
                     etree.SubElement(infContrato, "vContratoGlobal").text = "{:.2f}".format(
                         item.vContratoGlobal or 0
                     )
+
+        # infANTT is fully optional: omit it when no child was serialized
+        # (e.g. carga própria without RNTRC/CIOT/vale-pedágio/contratantes).
+        if len(infANTT) == 0:
+            rodo.remove(infANTT)
 
         # Veículo Tração
         if len(modal_rodoviario.veiculo_tracao) != 1:

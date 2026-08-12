@@ -50,8 +50,11 @@ NFCE = {
         "QR": "sefaz.am.gov.br/nfceweb/consultarNFCe.jsp?",
         "QR_HOMOLOGACAO": "sefaz.am.gov.br/nfceweb-hom/consultarNFCe.jsp?",
         "URL": "sefaz.am.gov.br/nfceweb/formConsulta.do",
-        "HTTPS": "https://sistemas.",
+        # Host do AUTORIZADOR (webservices SOAP, mTLS) - os caminhos acima ja embutem o
+        # subdominio "nfce.", entao o prefixo de producao e apenas o esquema.
+        "HTTPS": "https://",
         "HOMOLOGACAO": "https://hom",
+        # Host do portal de CONSULTA (qrCode/urlChave).
         "QR_HOST": "https://sistemas.",
         "QR_HOST_HOMOLOGACAO": "https://sistemas.",
     },

@@ -1,4 +1,4 @@
-# Source Map: `webservices.py` (612 lines)
+# Source Map: `webservices.py` (615 lines)
 
 SEFAZ webservice endpoint URLs organized by document type, state, and environment.
 
@@ -6,11 +6,13 @@ SEFAZ webservice endpoint URLs organized by document type, state, and environmen
 
 | Section | Lines | Variable | Purpose |
 |---------|-------|----------|---------|
-| NFC-e endpoints | 8-295 | `NFCE` | NFC-e webservice URLs and QR Code URLs by state |
-| NF-e endpoints | 297-471 | `NFE` | NF-e webservice URLs by state |
-| NFS-e endpoints | 473-499 | `NFSE` | NFS-e URLs (Betha, Ginfes) |
-| MDF-e endpoints | 501-516 | `MDFE` | MDF-e URLs (SVRS only) |
-| CT-e endpoints | 518-572 | `CTE` | CT-e URLs by state |
+| Host roles (consulta vs autorizador) | 1-22 | — | Module docstring: which key family each consumer may read |
+| NFC-e endpoints | 24-323 | `NFCE` | NFC-e webservice URLs and QR Code URLs by state |
+| `qrcode_host` helper | 326-337 | — | Consultation-portal host prefix for `<qrCode>`/`<urlChave>` |
+| NF-e endpoints | 343-514 | `NFE` | NF-e webservice URLs by state |
+| NFS-e endpoints | 517-542 | `NFSE` | NFS-e URLs (Betha, Ginfes) |
+| MDF-e endpoints | 545-559 | `MDFE` | MDF-e URLs (SVRS only) |
+| CT-e endpoints | 561-615 | `CTE` | CT-e URLs by state |
 
 ## URL Structure
 
@@ -37,41 +39,41 @@ SEFAZ verdict and the failure surfaces as a transport/XML-parse error, not a rej
 
 ## State/Virtual Environment Groups
 
-### NFC-e (`NFCE`) — Lines 8-295
+### NFC-e (`NFCE`) — Lines 24-323
 | Key | Lines | Description |
 |-----|-------|-------------|
-| Individual states | 9-278 | RO, AC, AM, RR, PA, AP, TO, MA, PI, CE, RN, PB, PE, AL, SE, BA, MG, ES, RJ, SP, PR, SC, RS, MS, MT, GO, DF |
-| `SVRS` | 284-294 | Virtual SEFAZ RS (fallback for states without own NFC-e) |
+| Individual states | 25-311 | RO, AC, AM, RR, PA, AP, TO, MA, PI, CE, RN, PB, PE, AL, SE, BA, MG, ES, RJ, SP, PR, SC, RS, MS, MT, GO, DF |
+| `SVRS` | 312-322 | Virtual SEFAZ RS (fallback for states without own NFC-e) |
 
-### NF-e (`NFE`) — Lines 297-471
+### NF-e (`NFE`) — Lines 343-514
 | Key | Lines | Description |
 |-----|-------|-------------|
-| `AN` | 302-309 | National environment (events, distribution) |
-| Individual states | 310-428 | AM, MA, PE, BA, MG, SP, PR, RS, MS, MT, GO |
-| `SVAN` | 430-440 | Virtual SEFAZ AN (MA for NF-e) |
-| `SVRS` | 441-451 | Virtual SEFAZ RS (most states) |
-| `SVC-AN` | 452-460 | Contingency AN |
-| `SVC-RS` | 461-470 | Contingency RS |
+| `AN` | 345-352 | National environment (events, distribution) |
+| Individual states | 353-472 | AM, MA, PE, BA, MG, SP, PR, RS, MS, MT, GO |
+| `SVAN` | 473-483 | Virtual SEFAZ AN (MA for NF-e) |
+| `SVRS` | 484-494 | Virtual SEFAZ RS (most states) |
+| `SVC-AN` | 495-503 | Contingency AN |
+| `SVC-RS` | 504-513 | Contingency RS |
 
-### NFS-e (`NFSE`) — Lines 473-499
+### NFS-e (`NFSE`) — Lines 517-542
 | Key | Lines | Description |
 |-----|-------|-------------|
-| `BETHA` | 476-486 | Betha provider (HTTP WSDL) |
-| `GINFES` | 488-498 | Ginfes provider (HTTPS WSDL) |
+| `BETHA` | 519-530 | Betha provider (HTTP WSDL) |
+| `GINFES` | 531-541 | Ginfes provider (HTTPS WSDL) |
 
-### MDF-e (`MDFE`) — Lines 501-516
-Only `SVRS` — single authorizer for all states.
+### MDF-e (`MDFE`) — Lines 545-559
+Only `SVRS` (547-558) — single authorizer for all states.
 
-### CT-e (`CTE`) — Lines 518-572
+### CT-e (`CTE`) — Lines 561-615
 | Key | Lines | Description |
 |-----|-------|-------------|
-| `AN` | 519-523 | National environment (distribution) |
-| Individual states | 524-558 | MT, MS, MG, PR, RS, SP |
-| `SVRS` | 560-565 | Virtual SEFAZ RS |
-| `SVSP` | 566-571 | Virtual SEFAZ SP (AP, PE, RR) |
+| `AN` | 562-566 | National environment (distribution) |
+| Individual states | 567-602 | MT, MS, MG, PR, RS, SP |
+| `SVRS` | 603-608 | Virtual SEFAZ RS |
+| `SVSP` | 609-614 | Virtual SEFAZ SP (AP, PE, RR) |
 
 ## Helpers
 
 | Function | Lines | Purpose |
 |----------|-------|---------|
-| `qrcode_host(uf, producao=True)` | 323-335 | Consultation-portal host prefix for `<qrCode>`/`<urlChave>`, with fallback to the webservice host |
+| `qrcode_host(uf, producao=True)` | 326-337 | Consultation-portal host prefix for `<qrCode>`/`<urlChave>`, with fallback to the webservice host |

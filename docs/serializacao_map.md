@@ -6,20 +6,20 @@ XML serialization of NF-e, NFC-e, NFS-e and MDF-e documents into SEFAZ-compliant
 
 | Class | Lines | Purpose |
 |-------|-------|---------|
-| `Serializacao` | 30-63 | Abstract base class (not instantiable directly) |
-| `SerializacaoXML` | 66-1860 | Main NF-e/NFC-e XML serialization |
-| `SerializacaoQrcode` | 2102-2206 | NFC-e QR Code generation |
-| `SerializacaoNfse` | 2209-2275 | NFS-e serialization (Betha/Ginfes) |
-| `SerializacaoQrcodeMDFe` | 2278-2301 | MDF-e QR Code generation |
-| `SerializacaoMDFe` | 2304-2771 | MDF-e XML serialization |
+| `Serializacao` | 31-65 | Abstract base class (not instantiable directly) |
+| `SerializacaoXML` | 67-2222 | Main NF-e/NFC-e XML serialization |
+| `SerializacaoQrcode` | 2225-2323 | NFC-e QR Code generation |
+| `SerializacaoNfse` | 2326-2392 | NFS-e serialization (Betha/Ginfes) |
+| `SerializacaoQrcodeMDFe` | 2395-2418 | MDF-e QR Code generation |
+| `SerializacaoMDFe` | 2421-2895 | MDF-e XML serialization |
 
 ---
 
-## `Serializacao` (base class) — Lines 30-63
+## `Serializacao` (base class) — Lines 31-65
 
 Abstract base for all serializers. Stores `_fonte_dados`, `_ambiente` (1=prod, 2=homolog), `_contingencia`, `_so_cpf`.
 
-## `SerializacaoXML` — Lines 66-1860
+## `SerializacaoXML` — Lines 67-2222
 
 ### Exported Methods
 | Method | Lines | Purpose |
@@ -102,19 +102,19 @@ Abstract base for all serializers. Stores `_fonte_dados`, `_ambiente` (1=prod, 2
 
 ---
 
-## `SerializacaoQrcode` — Lines 2102-2206
+## `SerializacaoQrcode` — Lines 2225-2323
 
 Generates NFC-e QR Code URL. Handles online/offline modes and state-specific URL patterns (SP, BA, MG, etc.).
 
-## `SerializacaoNfse` — Lines 2209-2275
+## `SerializacaoNfse` — Lines 2326-2392
 
 Delegates to Betha or Ginfes serializers. Methods: `gerar`, `gerar_lote`, `consultar_nfse`, `consultar_lote`, `consultar_rps`, `consultar_situacao_lote`, `cancelar`.
 
-## `SerializacaoQrcodeMDFe` — Lines 2278-2301
+## `SerializacaoQrcodeMDFe` — Lines 2395-2418
 
 Generates MDF-e QR Code URL using SVRS endpoint.
 
-## `SerializacaoMDFe` — Lines 2304-2771
+## `SerializacaoMDFe` — Lines 2421-2895
 
 ### Methods
 | Method | Lines | Purpose |

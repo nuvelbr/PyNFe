@@ -71,14 +71,14 @@ class QrcodeHostTestCase(unittest.TestCase):
         self.assertEqual(qrcode_host("SE", producao=False), NFCE["SE"]["HOMOLOGACAO"])
 
     def test_sp_e_am_mantem_o_host_de_qr_historico(self):
-        # SP e AM tinham o host de QR montado a partir da chave de webservice; os valores
-        # abaixo travam a equivalencia byte a byte apos a separacao das chaves.
-        self.assertEqual(qrcode_host("SP", producao=True), NFCE["SP"]["HTTPS"] + "www.")
-        self.assertEqual(
-            qrcode_host("SP", producao=False), NFCE["SP"]["HTTPS"] + "www.homologacao."
-        )
-        self.assertEqual(qrcode_host("AM", producao=True), NFCE["AM"]["HTTPS"])
-        self.assertEqual(qrcode_host("AM", producao=False), NFCE["AM"]["HTTPS"])
+        # SP e AM tinham o host de QR montado a partir da chave de webservice; os literais
+        # abaixo travam a equivalencia byte a byte apos a separacao das chaves. Sao literais
+        # de proposito: derivar o esperado de NFCE[uf]["HTTPS"] tornaria a trava vazia
+        # justamente quando essa chave for corrigida.
+        self.assertEqual(qrcode_host("SP", producao=True), "https://www.")
+        self.assertEqual(qrcode_host("SP", producao=False), "https://www.homologacao.")
+        self.assertEqual(qrcode_host("AM", producao=True), "https://sistemas.")
+        self.assertEqual(qrcode_host("AM", producao=False), "https://sistemas.")
 
     def test_chaves_de_qr_e_de_webservice_de_go_sao_distintas(self):
         self.assertEqual(NFCE["GO"]["HTTPS"], NFE["GO"]["HTTPS"])

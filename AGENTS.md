@@ -22,7 +22,7 @@ This allows you to navigate directly to the specific line-window you need instea
 | `docs/manifesto_map.md` | `pynfe/entidades/manifesto.py` | 447 | MDF-e manifest entities |
 | `docs/evento_map.md` | `pynfe/entidades/evento.py` | 237 | Event entities (cancel, correction, etc.) |
 | `docs/flags_map.md` | `pynfe/utils/flags.py` | 645 | Constants, namespaces, tax codes |
-| `docs/webservices_map.md` | `pynfe/utils/webservices.py` | 612 | SEFAZ endpoint URLs by state |
+| `docs/webservices_map.md` | `pynfe/utils/webservices.py` | 615 | SEFAZ endpoint URLs by state |
 | `docs/utils_map.md` | `pynfe/utils/__init__.py` | 253 | Utility functions (municipality lookup, signing) |
 
 ### How to Use Source Maps
@@ -119,4 +119,5 @@ ruff format pynfe/
   prefixes read only by `qrcode_host` (used for `<qrCode>`/`<urlChave>`). Never make one key
   serve both roles: a webservice pointed at the consultation portal gets a redirect plus HTML
   instead of a SEFAZ verdict, so emissions fail as transport errors with no rejeicao to explain
-  them. When a UF changes its consultation host, touch only the `QR_*` keys
+  them. When a UF changes its consultation host, touch only the `QR_*` keys, and when a UF's
+  endpoint paths already embed a subdomain, the authorizer prefix is the scheme alone.

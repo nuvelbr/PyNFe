@@ -9,7 +9,7 @@ XML serialization of NF-e, NFC-e, NFS-e and MDF-e documents into SEFAZ-compliant
 | `Serializacao` | 31-65 | Abstract base class (not instantiable directly) |
 | `SerializacaoXML` | 67-2222 | Main NF-e/NFC-e XML serialization |
 | `SerializacaoQrcode` | 2225-2309 | NFC-e QR Code generation |
-| `SerializacaoNfse` | 2326-2392 | NFS-e serialization (Betha/Ginfes) |
+| `SerializacaoNfse` | 2312-2378 | NFS-e serialization (Betha/Ginfes) |
 | `SerializacaoQrcodeMDFe` | 2381-2404 | MDF-e QR Code generation |
 | `SerializacaoMDFe` | 2407-2881 | MDF-e XML serialization |
 

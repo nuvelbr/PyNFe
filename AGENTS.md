@@ -15,14 +15,14 @@ This allows you to navigate directly to the specific line-window you need instea
 
 | Source Map | File | Lines | Description |
 |------------|------|-------|-------------|
-| `docs/serializacao_map.md` | `pynfe/processamento/serializacao.py` | 2630 | XML serialization (NF-e, MDF-e, QR codes) |
+| `docs/serializacao_map.md` | `pynfe/processamento/serializacao.py` | 2895 | XML serialization (NF-e, MDF-e, QR codes) |
 | `docs/comunicacao_map.md` | `pynfe/processamento/comunicacao.py` | 1348 | SEFAZ webservice communication |
 | `docs/autorizador_nfse_map.md` | `pynfe/processamento/autorizador_nfse.py` | 538 | NFS-e authorization (Betha/Ginfes) |
 | `docs/notafiscal_map.md` | `pynfe/entidades/notafiscal.py` | 1253 | Invoice entities and tax fields |
 | `docs/manifesto_map.md` | `pynfe/entidades/manifesto.py` | 447 | MDF-e manifest entities |
 | `docs/evento_map.md` | `pynfe/entidades/evento.py` | 237 | Event entities (cancel, correction, etc.) |
 | `docs/flags_map.md` | `pynfe/utils/flags.py` | 645 | Constants, namespaces, tax codes |
-| `docs/webservices_map.md` | `pynfe/utils/webservices.py` | 572 | SEFAZ endpoint URLs by state |
+| `docs/webservices_map.md` | `pynfe/utils/webservices.py` | 612 | SEFAZ endpoint URLs by state |
 | `docs/utils_map.md` | `pynfe/utils/__init__.py` | 253 | Utility functions (municipality lookup, signing) |
 
 ### How to Use Source Maps
@@ -113,3 +113,10 @@ ruff format pynfe/
 - The `pynfe/data/` directory contains reference data files that should not be modified casually
 - Tax code serialization follows strict SEFAZ XML schema ordering — field order matters
 - Each Brazilian state has its own SEFAZ endpoint configuration in `webservices.py`
+- **A UF's consultation portal host and its authorizer host are different endpoints.** In
+  `webservices.py`, `HTTPS`/`HOMOLOGACAO` are authorizer host prefixes read only by
+  `ComunicacaoSefaz._get_url`; `QR_HOST`/`QR_HOST_HOMOLOGACAO` are consultation-portal host
+  prefixes read only by `qrcode_host` (used for `<qrCode>`/`<urlChave>`). Never make one key
+  serve both roles: a webservice pointed at the consultation portal gets a redirect plus HTML
+  instead of a SEFAZ verdict, so emissions fail as transport errors with no rejeicao to explain
+  them. When a UF changes its consultation host, touch only the `QR_*` keys

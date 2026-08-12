@@ -1,4 +1,4 @@
-# Source Map: `webservices.py` (572 lines)
+# Source Map: `webservices.py` (612 lines)
 
 SEFAZ webservice endpoint URLs organized by document type, state, and environment.
 
@@ -22,10 +22,18 @@ Each state/virtual environment entry contains:
 - `INUTILIZACAO` — Number invalidation endpoint
 - `EVENTOS` — Event reception endpoint
 - `CADASTRO` — Registration query endpoint (some states)
-- `HTTPS` — Production base URL prefix
-- `HOMOLOGACAO` — Homologation base URL prefix
-- `QR` — QR Code URL (NFC-e only)
-- `URL` — Consultation URL (NFC-e only)
+- `HTTPS` — Production base URL prefix of the AUTHORIZER (webservices; read only by
+  `ComunicacaoSefaz._get_url`)
+- `HOMOLOGACAO` — Homologation base URL prefix of the AUTHORIZER
+- `QR_HOST` / `QR_HOST_HOMOLOGACAO` — Base URL prefix of the CONSULTATION portal, used for
+  `<qrCode>`/`<urlChave>` (read only by `qrcode_host`); falls back to `HTTPS`/`HOMOLOGACAO`
+  for UFs that serve both roles from the same host
+- `QR` — QR Code path (NFC-e only; `QR_HOMOLOGACAO` where the path differs per environment)
+- `URL` — Consultation path (NFC-e only)
+
+The two host families must never be shared: a UF such as GO answers webservice POSTs sent to
+its consultation host with a load-balancer redirect and HTML, so the invoice never receives a
+SEFAZ verdict and the failure surfaces as a transport/XML-parse error, not a rejeicao.
 
 ## State/Virtual Environment Groups
 
@@ -61,3 +69,9 @@ Only `SVRS` — single authorizer for all states.
 | Individual states | 524-558 | MT, MS, MG, PR, RS, SP |
 | `SVRS` | 560-565 | Virtual SEFAZ RS |
 | `SVSP` | 566-571 | Virtual SEFAZ SP (AP, PE, RR) |
+
+## Helpers
+
+| Function | Lines | Purpose |
+|----------|-------|---------|
+| `qrcode_host(uf, producao=True)` | 323-335 | Consultation-portal host prefix for `<qrCode>`/`<urlChave>`, with fallback to the webservice host |

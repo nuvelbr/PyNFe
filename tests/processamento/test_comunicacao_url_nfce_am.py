@@ -16,7 +16,7 @@ facts settle the correct prefix:
   the same certificate and the same client-certificate demand.
 - ``sistemas.sefaz.am.gov.br`` completes the TLS handshake with no client certificate and a
   plain ``CN=sistemas.sefaz.am.gov.br`` cert — it is the public portal, correct for
-  ``<qrCode>``/``<urlChave>`` and wrong for SOAP.
+  ``<qrCode>`` and wrong for SOAP.
 
 The QR host stays on ``https://sistemas.`` via ``QR_HOST``; the byte-identity of AM's
 ``<qrCode>``/``<urlChave>`` is locked in ``tests/test_nfce_qrcode_hosts_por_uf.py``.

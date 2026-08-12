@@ -3,7 +3,7 @@
 """Regression tests for the GO NFC-e WEBSERVICE host (autorizador, not consulta portal).
 
 GO serves the public consultation portal (``nfeweb.sefaz.go.gov.br``, destination of
-``<qrCode>``/``<urlChave>``) and the SOAP authorizer (``nfe.sefaz.go.gov.br``) from
+``<qrCode>``) and the SOAP authorizer (``nfe.sefaz.go.gov.br``) from
 different hosts. Pointing the webservice URL at the consultation portal does NOT produce
 a SEFAZ rejeicao: the portal answers a BigIP redirect plus HTML, so the invoice never gets
 a verdict at all and every emission fails as a transport error. These tests pin the

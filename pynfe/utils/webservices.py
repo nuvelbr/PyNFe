@@ -360,11 +360,14 @@ NFCE = {
 
 
 def qrcode_host(uf, producao=True):
-    """Prefixo de host do portal de consulta usado no ``<qrCode>``/``<urlChave>``.
+    """Prefixo de host do portal de consulta usado no ``<qrCode>``.
 
     Prefere as chaves dedicadas ``QR_HOST``/``QR_HOST_HOMOLOGACAO``; para UFs que nao
     declaram host de consulta proprio (portal e autorizador no mesmo servidor), cai no
     host de webservice, preservando o comportamento historico.
+
+    Nao serve o ``<urlChave>``: esse campo tem registro proprio e URL completa, ver
+    ``url_consulta_chave``.
     """
     dados = NFCE[uf]
     chave_qr = "QR_HOST" if producao else "QR_HOST_HOMOLOGACAO"

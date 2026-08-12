@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 # *-* encoding: utf8 *-*
-"""Pins the ``<qrCode>``/``<urlChave>`` host of every UF whose branch reads a host prefix.
+"""Pins the ``<qrCode>`` host of every UF whose branch reads a host prefix.
 
 The GO fix (DEV-2468) routed those branches through ``webservices.qrcode_host`` so the QR
 host can no longer be taken from the authorizer keys. These tests lock the resulting URLs
 for SP, AM, BA and MG in both environments, which is what makes the refactor verifiable as
 byte-identical outside GO.
+
+``urlChave`` is asserted here only as the value that pairs with each of those QR hosts; the
+field's own registry, property tests and non-regression set live in
+``test_nfce_urlchave_por_uf.py``.
 """
 
 import unittest

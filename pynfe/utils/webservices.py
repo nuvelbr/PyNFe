@@ -19,8 +19,8 @@ consulta de uma UF, mexa somente nas chaves ``QR_*``.
 
 ``qrCode`` vs ``urlChave``
 -------------------------
-Sao dois campos do ``<infNFeSupl>`` com registros oficiais DIFERENTES, e nenhuma UF
-usa o mesmo endereco nos dois:
+Sao dois campos do ``<infNFeSupl>`` com registros oficiais DIFERENTES, cada um lido da
+sua propria entrada - nunca do campo irmao:
 
 - ``<qrCode>``: endereco do leitor de QR Code (``QR``/``QR_HOMOLOGACAO`` sobre
   ``qrcode_host``).
@@ -36,7 +36,11 @@ nas UFs que ainda dependem do caminho legado ``URL``. Ao registrar uma UF nova,
 declare ``CONSULTA_CHAVE`` em vez de mexer em ``URL``.
 
 Usar o endereco de QR Code no ``urlChave`` gera rejeicao 878 em GO ("Endereco do site
-da UF da Consulta por chave de acesso diverge do previsto") - DEV-2468.
+da UF da Consulta por chave de acesso diverge do previsto") - DEV-2468. A igualdade entre
+os dois campos nao e por si um defeito: em algumas UFs o registro oficial declara o mesmo
+endereco nos dois (SC hoje). O conjunto fechado dessas UFs esta travado em
+``tests/test_nfce_urlchave_por_uf.py``; compare sempre com a entrada do registro do campo
+que voce esta mexendo.
 """
 
 # http://nfce.encat.org/desenvolvedor/qrcode/
@@ -366,8 +370,12 @@ def qrcode_host(uf, producao=True):
     declaram host de consulta proprio (portal e autorizador no mesmo servidor), cai no
     host de webservice, preservando o comportamento historico.
 
-    Nao serve o ``<urlChave>``: esse campo tem registro proprio e URL completa, ver
-    ``url_consulta_chave``.
+    Uma UF com ``CONSULTA_CHAVE`` nunca passa por aqui para montar o ``<urlChave>`` -
+    esse campo tem registro proprio e URL completa, ver ``url_consulta_chave``. So o
+    caminho legado (UF sem ``CONSULTA_CHAVE``) ainda concatena este prefixo sobre ``URL``,
+    e e por isso que corrigir ``HTTPS``/``HOMOLOGACAO`` de uma dessas UFs move tambem o
+    ``urlChave`` dela: declare ``QR_HOST``/``QR_HOST_HOMOLOGACAO`` antes de mexer no host
+    de autorizador, como foi feito em AM e SP.
     """
     dados = NFCE[uf]
     chave_qr = "QR_HOST" if producao else "QR_HOST_HOMOLOGACAO"

@@ -15,14 +15,14 @@ This allows you to navigate directly to the specific line-window you need instea
 
 | Source Map | File | Lines | Description |
 |------------|------|-------|-------------|
-| `docs/serializacao_map.md` | `pynfe/processamento/serializacao.py` | 2895 | XML serialization (NF-e, MDF-e, QR codes) |
+| `docs/serializacao_map.md` | `pynfe/processamento/serializacao.py` | 2881 | XML serialization (NF-e, MDF-e, QR codes) |
 | `docs/comunicacao_map.md` | `pynfe/processamento/comunicacao.py` | 1348 | SEFAZ webservice communication |
 | `docs/autorizador_nfse_map.md` | `pynfe/processamento/autorizador_nfse.py` | 538 | NFS-e authorization (Betha/Ginfes) |
 | `docs/notafiscal_map.md` | `pynfe/entidades/notafiscal.py` | 1253 | Invoice entities and tax fields |
 | `docs/manifesto_map.md` | `pynfe/entidades/manifesto.py` | 447 | MDF-e manifest entities |
 | `docs/evento_map.md` | `pynfe/entidades/evento.py` | 237 | Event entities (cancel, correction, etc.) |
 | `docs/flags_map.md` | `pynfe/utils/flags.py` | 645 | Constants, namespaces, tax codes |
-| `docs/webservices_map.md` | `pynfe/utils/webservices.py` | 615 | SEFAZ endpoint URLs by state |
+| `docs/webservices_map.md` | `pynfe/utils/webservices.py` | 684 | SEFAZ endpoint URLs by state |
 | `docs/utils_map.md` | `pynfe/utils/__init__.py` | 253 | Utility functions (municipality lookup, signing) |
 
 ### How to Use Source Maps
@@ -120,14 +120,15 @@ ruff format pynfe/
   serve both roles: a webservice pointed at the consultation portal gets a redirect plus HTML
   instead of a SEFAZ verdict, so emissions fail as transport errors with no rejeicao to explain
   them. When a UF changes its consultation host, touch only the `QR_*` keys
-- **`<qrCode>` and `<urlChave>` are separate registries; no UF uses one address for both.**
+- **`<qrCode>` and `<urlChave>` are separate registry entries; each is sourced on its own.**
   `urlChave` (consulta por chave de acesso) comes from `CONSULTA_CHAVE`/
   `CONSULTA_CHAVE_HOMOLOGACAO` — the COMPLETE, verbatim URL from the official registry
   (`URL-ConsultaNFCe_2.00` in ACBr's `ACBrNFeServicos.ini`, cross-checked against ENCAT) —
   returned by `url_consulta_chave` with no host prefix ever concatenated onto it. GO rejects
   878 when `urlChave` carries the QR Code address, and concatenating a host prefix onto an
   already-complete URL is what produced values like `https://nfce.http://www.dfe.ms.gov.br/…`.
-  Source the value from the registry, never infer it from a sibling UF; details and the
-  per-UF divergence inventory are in `docs/webservices_map.md` and
-  `tests/test_nfce_urlchave_por_uf.py`, and when a UF's
-  endpoint paths already embed a subdomain, the authorizer prefix is the scheme alone.
+  Source each field from its own registry entry, never from the sibling field and never from a
+  sibling UF — a few UFs legitimately register the same address for both, so equality is not by
+  itself the defect. Per-UF detail and the closed sets of known divergences live in
+  `docs/webservices_map.md` and `tests/test_nfce_urlchave_por_uf.py`. When a UF's endpoint paths
+  already embed a subdomain, the authorizer prefix is the scheme alone.

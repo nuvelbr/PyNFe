@@ -1,5 +1,21 @@
 """
 @author: Junior Tada, Leonardo Tada
+
+Host de CONSULTA vs host de AUTORIZADOR
+---------------------------------------
+Numa UF, o portal publico de consulta (destino do ``<qrCode>``/``<urlChave>``) e o
+autorizador (webservices SOAP com mTLS) podem ser servidores DIFERENTES. Por isso as
+duas familias de chave sao separadas em ``NFCE`` e nunca devem ser reaproveitadas
+uma pela outra:
+
+- ``HTTPS`` / ``HOMOLOGACAO``: prefixo de host do AUTORIZADOR, lido apenas por
+  ``ComunicacaoSefaz._get_url`` para montar URLs de webservice.
+- ``QR_HOST`` / ``QR_HOST_HOMOLOGACAO``: prefixo de host do portal de CONSULTA, lido
+  apenas por ``qrcode_host`` (usado em ``SerializacaoQrcode.gerar_qrcode``).
+
+Apontar webservice para o host de consulta nao gera rejeicao: o portal responde
+redirect + HTML, entao a nota nunca recebe veredito da SEFAZ. Ao atualizar o host de
+consulta de uma UF, mexa somente nas chaves ``QR_*``.
 """
 
 # http://nfce.encat.org/desenvolvedor/qrcode/
@@ -36,6 +52,8 @@ NFCE = {
         "URL": "sefaz.am.gov.br/nfceweb/formConsulta.do",
         "HTTPS": "https://sistemas.",
         "HOMOLOGACAO": "https://hom",
+        "QR_HOST": "https://sistemas.",
+        "QR_HOST_HOMOLOGACAO": "https://sistemas.",
     },
     "RR": {
         "STATUS": "",
@@ -209,6 +227,8 @@ NFCE = {
         "URL": "nfce.fazenda.sp.gov.br/consulta",
         "HTTPS": "https://",
         "HOMOLOGACAO": "https://homologacao.",
+        "QR_HOST": "https://www.",
+        "QR_HOST_HOMOLOGACAO": "https://www.homologacao.",
     },
     "PR": {
         "STATUS": "nfce.sefa.pr.gov.br/nfce/NFeStatusServico4?wsdl",
@@ -273,8 +293,12 @@ NFCE = {
         "EVENTOS": "sefaz.go.gov.br/nfe/services/NFeRecepcaoEvento4?wsdl",
         "QR": "sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe?",
         "CADASTRO": "sefaz.go.gov.br/nfe/services/CadConsultaCadastro4?wsdl",
-        "HTTPS": "https://nfeweb.",
-        "HOMOLOGACAO": "https://nfewebhomolog.",
+        # Host do AUTORIZADOR (webservices SOAP, mTLS) - igual ao de NFE["GO"].
+        "HTTPS": "https://nfe.",
+        "HOMOLOGACAO": "https://homolog.",
+        # Host do portal de CONSULTA (qrCode/urlChave) - IT 2025.003, DEV-2177.
+        "QR_HOST": "https://nfeweb.",
+        "QR_HOST_HOMOLOGACAO": "https://nfewebhomolog.",
         "URL": "sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe",
     },
     "DF": {
@@ -294,6 +318,21 @@ NFCE = {
         "HOMOLOGACAO": "https://nfce-homologacao.",
     },
 }
+
+
+def qrcode_host(uf, producao=True):
+    """Prefixo de host do portal de consulta usado no ``<qrCode>``/``<urlChave>``.
+
+    Prefere as chaves dedicadas ``QR_HOST``/``QR_HOST_HOMOLOGACAO``; para UFs que nao
+    declaram host de consulta proprio (portal e autorizador no mesmo servidor), cai no
+    host de webservice, preservando o comportamento historico.
+    """
+    dados = NFCE[uf]
+    chave_qr = "QR_HOST" if producao else "QR_HOST_HOMOLOGACAO"
+    if dados.get(chave_qr):
+        return dados[chave_qr]
+    return dados["HTTPS"] if producao else dados["HOMOLOGACAO"]
+
 
 # Nfe
 # homologação => http://hom.nfe.fazenda.gov.br/PORTAL/WebServices.aspx

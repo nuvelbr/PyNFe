@@ -1,4 +1,4 @@
-# Source Map: `serializacao.py` (2771 lines)
+# Source Map: `serializacao.py` (2895 lines)
 
 XML serialization of NF-e, NFC-e, NFS-e and MDF-e documents into SEFAZ-compliant XML format.
 

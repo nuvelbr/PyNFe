@@ -25,7 +25,7 @@ from pynfe.utils.flags import (
     VERSAO_PADRAO,
     VERSAO_QRCODE,
 )
-from pynfe.utils.webservices import MDFE, NFCE, qrcode_host
+from pynfe.utils.webservices import MDFE, NFCE, qrcode_host, url_consulta_chave
 
 
 class Serializacao(object):
@@ -2278,36 +2278,22 @@ class SerializacaoQrcode(object):
 
         url = "p={}|{}".format(url, url_hash)
 
-        # url_chave -Texto com a URL de consulta por chave de acesso a ser impressa no DANFE NFC-e.
-        # Informar a URL da “Consulta por chave de acesso da NFC-e”.
-        # A mesma URL que deve estar informada no DANFE NFC-e para consulta por chave de acesso
-        lista_uf_padrao = ["PR", "CE", "RS", "RJ", "RO", "DF"]
-        if uf in lista_uf_padrao:
+        # As UFs abaixo divergem apenas em COMO montar o <qrCode>: para quais delas o caminho
+        # "QR" ja embute o host, e qual caminho vale por ambiente.
+        lista_uf_qr_sem_host = ["PR", "CE", "RS", "RJ", "RO", "DF", "MG"]
+        if uf in lista_uf_qr_sem_host:
             qrcode = NFCE[uf]["QR"] + url
-            url_chave = NFCE[uf]["URL"]
-        elif uf == "SP":
-            host = qrcode_host(uf, producao=tpamb == "1")
-            qrcode = host + NFCE[uf]["QR"] + url
-            url_chave = host + NFCE[uf]["URL"]
-        # BA tem comportamento distindo para qrcode e url
-        elif uf == "BA":
-            qrcode = qrcode_host(uf, producao=tpamb == "1") + NFCE[uf]["QR"] + url
-            url_chave = NFCE[uf]["URL"]
-        # MG tem comportamento distintos para qrcode e url
-        elif uf == "MG":
-            qrcode = NFCE[uf]["QR"] + url
-            url_chave = qrcode_host(uf, producao=tpamb == "1") + NFCE[uf]["URL"]
-        # AM tem comportamento distintos para qrcode e url
         elif uf == "AM":
-            host = qrcode_host(uf, producao=tpamb == "1")
             caminho_qr = NFCE[uf]["QR"] if tpamb == "1" else NFCE[uf]["QR_HOMOLOGACAO"]
-            qrcode = host + caminho_qr + url
-            url_chave = host + NFCE[uf]["URL"]
-        # AC, RR, PA, SE, GO
+            qrcode = qrcode_host(uf, producao=tpamb == "1") + caminho_qr + url
+        # AC, AP, BA, ES, GO, MS, PA, PE, RR, SC, SE, SP
         else:
-            host = qrcode_host(uf, producao=tpamb == "1")
-            qrcode = host + NFCE[uf]["QR"] + url
-            url_chave = host + NFCE[uf]["URL"]
+            qrcode = qrcode_host(uf, producao=tpamb == "1") + NFCE[uf]["QR"] + url
+
+        # <urlChave> e a URL da "Consulta por chave de acesso da NFC-e" impressa no DANFE
+        # NFC-e - registro oficial DIFERENTE do endereco do QR Code. url_consulta_chave
+        # devolve o valor completo; nunca concatene host aqui (DEV-2468).
+        url_chave = url_consulta_chave(uf, producao=tpamb == "1")
         # adicionta tag infNFeSupl com qrcode
         info = etree.Element("infNFeSupl")
         etree.SubElement(info, "qrCode").text = etree.CDATA(qrcode.strip())

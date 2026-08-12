@@ -16,6 +16,27 @@ uma pela outra:
 Apontar webservice para o host de consulta nao gera rejeicao: o portal responde
 redirect + HTML, entao a nota nunca recebe veredito da SEFAZ. Ao atualizar o host de
 consulta de uma UF, mexa somente nas chaves ``QR_*``.
+
+``qrCode`` vs ``urlChave``
+-------------------------
+Sao dois campos do ``<infNFeSupl>`` com registros oficiais DIFERENTES, e nenhuma UF
+usa o mesmo endereco nos dois:
+
+- ``<qrCode>``: endereco do leitor de QR Code (``QR``/``QR_HOMOLOGACAO`` sobre
+  ``qrcode_host``).
+- ``<urlChave>``: endereco da "Consulta por chave de acesso" (``URL-ConsultaNFCe_2.00``
+  no registro do ACBr / ENCAT), lido por ``url_consulta_chave``.
+
+Para o ``urlChave`` a chave dedicada e ``CONSULTA_CHAVE`` /
+``CONSULTA_CHAVE_HOMOLOGACAO``, que guarda a URL COMPLETA e VERBATIM do registro -
+inclusive o esquema quando o registro o traz, e sem esquema quando nao traz. Nenhum
+prefixo de host e concatenado nesse valor: foi exatamente essa concatenacao sobre uma
+URL ja completa que produziu lixo como ``https://nfce.http://www.dfe.ms.gov.br/...``
+nas UFs que ainda dependem do caminho legado ``URL``. Ao registrar uma UF nova,
+declare ``CONSULTA_CHAVE`` em vez de mexer em ``URL``.
+
+Usar o endereco de QR Code no ``urlChave`` gera rejeicao 878 em GO ("Endereco do site
+da UF da Consulta por chave de acesso diverge do previsto") - DEV-2468.
 """
 
 # http://nfce.encat.org/desenvolvedor/qrcode/
@@ -176,6 +197,10 @@ NFCE = {
         "HTTPS": "http://nfe.",
         "HOMOLOGACAO": "http://hnfe.",
         "URL": "http://hinternet.sefaz.ba.gov.br/nfce/consulta",
+        # ACBrNFeServicos.ini [NFCe_BA_P]/[NFCe_BA_H] URL-ConsultaNFCe_2.00. O "URL" acima
+        # era o valor de homologacao, emitido tambem em producao.
+        "CONSULTA_CHAVE": "http://www.sefaz.ba.gov.br/nfce/consulta",
+        "CONSULTA_CHAVE_HOMOLOGACAO": "http://hinternet.sefaz.ba.gov.br/nfce/consulta",
     },
     "MG": {
         "STATUS": "fazenda.mg.gov.br/nfce/services/NFeStatusServico4",
@@ -243,6 +268,10 @@ NFCE = {
         "CADASTRO": "nfce.sefa.pr.gov.br/nfce/CadConsultaCadastro4?wsdl",
         "QR": "http://www.fazenda.pr.gov.br/nfce/qrcode?",
         "URL": "http://www.fazenda.pr.gov.br/nfce/consulta",
+        # ACBrNFeServicos.ini [NFCe_PR_P]/[NFCe_PR_H] URL-ConsultaNFCe_2.00 - mesmo valor nos
+        # dois ambientes, byte-identico ao que o caminho legado ja emitia.
+        "CONSULTA_CHAVE": "http://www.fazenda.pr.gov.br/nfce/consulta",
+        "CONSULTA_CHAVE_HOMOLOGACAO": "http://www.fazenda.pr.gov.br/nfce/consulta",
         "HTTPS": "https://",
         "HOMOLOGACAO": "https://homologacao.",
     },
@@ -303,6 +332,13 @@ NFCE = {
         "QR_HOST": "https://nfeweb.",
         "QR_HOST_HOMOLOGACAO": "https://nfewebhomolog.",
         "URL": "sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe",
+        # ACBrNFeServicos.ini [NFCe_GO_P]/[NFCe_GO_H] URL-ConsultaNFCe_2.00, confirmado pelo
+        # registro ENCAT. O IT 2025.003 definiu somente a URL do QR Code, por isso o "URL"
+        # acima ficou apontando para o leitor de QR e GO passou a rejeitar 878.
+        "CONSULTA_CHAVE": "http://www.sefaz.go.gov.br/nfce/consulta",
+        "CONSULTA_CHAVE_HOMOLOGACAO": (
+            "http://www.nfce.go.gov.br/post/ver/214413/consulta-nfc-e-homologacao"
+        ),
     },
     "DF": {
         "QR": "http://www.fazenda.df.gov.br/nfce/qrcode?",
@@ -335,6 +371,28 @@ def qrcode_host(uf, producao=True):
     if dados.get(chave_qr):
         return dados[chave_qr]
     return dados["HTTPS"] if producao else dados["HOMOLOGACAO"]
+
+
+# UFs cujo ``URL`` legado ja e a urlChave completa, sem prefixo de host. Lista fechada:
+# UFs novas devem declarar ``CONSULTA_CHAVE`` em vez de entrar aqui.
+UFS_URLCHAVE_SEM_HOST = frozenset({"CE", "DF", "RJ", "RO", "RS"})
+
+
+def url_consulta_chave(uf, producao=True):
+    """URL completa de consulta por chave de acesso, para o ``<urlChave>``.
+
+    Prefere ``CONSULTA_CHAVE``/``CONSULTA_CHAVE_HOMOLOGACAO``, que guardam o valor
+    verbatim do registro oficial e sao devolvidos sem nenhuma concatenacao. Sem essas
+    chaves, reproduz o caminho legado (``URL``, com prefixo de host onde a UF nunca
+    declarou host no proprio ``URL``).
+    """
+    dados = NFCE[uf]
+    chave = "CONSULTA_CHAVE" if producao else "CONSULTA_CHAVE_HOMOLOGACAO"
+    if dados.get(chave):
+        return dados[chave]
+    if uf in UFS_URLCHAVE_SEM_HOST:
+        return dados["URL"]
+    return qrcode_host(uf, producao=producao) + dados["URL"]
 
 
 # Nfe

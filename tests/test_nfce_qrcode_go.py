@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 # *-* encoding: utf8 *-*
-"""Regression tests for the Goias (GO) NFC-e QRCode/urlChave host.
+"""Regression tests for the Goias (GO) NFC-e ``<qrCode>`` host.
 
-Informe Tecnico 2025.003 moved the GO NFC-e consultation host from the old
+Informe Tecnico 2025.003 moved the GO NFC-e QR Code host from the old
 ``nfe.sefaz.go.gov.br`` / ``homolog.sefaz.go.gov.br`` subdomains to
 ``nfeweb.sefaz.go.gov.br`` (producao) and ``nfewebhomolog.sefaz.go.gov.br``
 (homologacao). Emitting with the old host triggers SEFAZ rejeicao 395
-("Informado QR-Code para NFC-e com formato invalido"). These tests pin both
-the ``<qrCode>`` base and the ``<urlChave>`` so the host can never silently
-regress to the rejected subdomain again. See DEV-2177.
+("Informado QR-Code para NFC-e com formato invalido"). These tests pin the
+``<qrCode>`` base so the host can never silently regress to the rejected
+subdomain again. See DEV-2177.
+
+The ``<urlChave>`` is deliberately NOT asserted against this host: IT 2025.003
+defines only the QR Code address, and emitting it as ``urlChave`` is what made GO
+reject 878. That field has its own registry and its own tests in
+``test_nfce_urlchave_por_uf.py`` (DEV-2468).
 """
 
 import unittest
@@ -64,31 +69,21 @@ class QrcodeGoNFCeTestCase(unittest.TestCase):
         return qrcode, url_chave
 
     def test_qrcode_producao_usa_host_nfeweb(self):
-        qrcode, url_chave = self._gerar(TP_AMB_PRODUCAO)
+        qrcode, _ = self._gerar(TP_AMB_PRODUCAO)
         self.assertTrue(
             qrcode.startswith(QRCODE_HOST_PRODUCAO),
             f"qrCode de producao deve comecar com {QRCODE_HOST_PRODUCAO}, veio: {qrcode}",
         )
-        self.assertTrue(
-            url_chave.startswith(QRCODE_HOST_PRODUCAO),
-            f"urlChave de producao deve comecar com {QRCODE_HOST_PRODUCAO}, veio: {url_chave}",
-        )
         # Garante que nao reverteu para o subdominio rejeitado (rejeicao 395).
         self.assertNotIn("https://nfe.sefaz.go.gov.br", qrcode)
-        self.assertNotIn("https://nfe.sefaz.go.gov.br", url_chave)
 
     def test_qrcode_homologacao_usa_host_nfewebhomolog(self):
-        qrcode, url_chave = self._gerar(TP_AMB_HOMOLOGACAO)
+        qrcode, _ = self._gerar(TP_AMB_HOMOLOGACAO)
         self.assertTrue(
             qrcode.startswith(QRCODE_HOST_HOMOLOGACAO),
             f"qrCode de homologacao deve comecar com {QRCODE_HOST_HOMOLOGACAO}, veio: {qrcode}",
         )
-        self.assertTrue(
-            url_chave.startswith(QRCODE_HOST_HOMOLOGACAO),
-            f"urlChave de homologacao deve comecar com {QRCODE_HOST_HOMOLOGACAO}, veio: {url_chave}",
-        )
         self.assertNotIn("https://homolog.sefaz.go.gov.br", qrcode)
-        self.assertNotIn("https://homolog.sefaz.go.gov.br", url_chave)
 
 
 if __name__ == "__main__":

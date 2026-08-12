@@ -119,5 +119,15 @@ ruff format pynfe/
   prefixes read only by `qrcode_host` (used for `<qrCode>`/`<urlChave>`). Never make one key
   serve both roles: a webservice pointed at the consultation portal gets a redirect plus HTML
   instead of a SEFAZ verdict, so emissions fail as transport errors with no rejeicao to explain
-  them. When a UF changes its consultation host, touch only the `QR_*` keys, and when a UF's
+  them. When a UF changes its consultation host, touch only the `QR_*` keys
+- **`<qrCode>` and `<urlChave>` are separate registries; no UF uses one address for both.**
+  `urlChave` (consulta por chave de acesso) comes from `CONSULTA_CHAVE`/
+  `CONSULTA_CHAVE_HOMOLOGACAO` — the COMPLETE, verbatim URL from the official registry
+  (`URL-ConsultaNFCe_2.00` in ACBr's `ACBrNFeServicos.ini`, cross-checked against ENCAT) —
+  returned by `url_consulta_chave` with no host prefix ever concatenated onto it. GO rejects
+  878 when `urlChave` carries the QR Code address, and concatenating a host prefix onto an
+  already-complete URL is what produced values like `https://nfce.http://www.dfe.ms.gov.br/…`.
+  Source the value from the registry, never infer it from a sibling UF; details and the
+  per-UF divergence inventory are in `docs/webservices_map.md` and
+  `tests/test_nfce_urlchave_por_uf.py`, and when a UF's
   endpoint paths already embed a subdomain, the authorizer prefix is the scheme alone.

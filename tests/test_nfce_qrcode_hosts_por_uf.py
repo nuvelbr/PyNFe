@@ -44,7 +44,9 @@ ESPERADO = {
     "BA": {
         TP_AMB_PRODUCAO: (
             "http://nfe.sefaz.ba.gov.br/servicos/nfce/qrcode.aspx?",
-            "http://hinternet.sefaz.ba.gov.br/nfce/consulta",
+            # ACBr [NFCe_BA_P] URL-ConsultaNFCe_2.00; o hinternet e o valor de homologacao,
+            # emitido em producao ate DEV-2468.
+            "http://www.sefaz.ba.gov.br/nfce/consulta",
         ),
         TP_AMB_HOMOLOGACAO: (
             "http://hnfe.sefaz.ba.gov.br/servicos/nfce/qrcode.aspx?",

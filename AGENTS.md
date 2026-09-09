@@ -28,7 +28,7 @@ git diff --check
 
 `requirements-dev.txt` pins Ruff 0.12.5, matching the existing Poetry minimum; use that environment so lint results are reproducible.
 
-A focused `pytest tests/<file>.py` is useful during development but never replaces the full suite. Project metadata requires Python 3.9+, while CI currently includes Python 3.8; report the mismatch and the actual 3.8 job outcome instead of claiming support or weakening the declared requirement. Pushes and PRs run format, lint, and tests across the CI matrix. Every push also builds distributions; publishing occurs only for tags. Do not create a tag or publish without explicit authorization.
+A focused `pytest tests/<file>.py` is useful during development but never replaces the full suite. Project metadata requires Python 3.9+, and CI tests every supported minor from 3.9 through 3.13; do not claim support outside that declared range or weaken it to accommodate an obsolete runner. Pushes and PRs run format, lint, and tests across the CI matrix. Every push also builds distributions; publishing occurs only for tags. Do not create a tag or publish without explicit authorization.
 
 ## Architecture and invariants
 

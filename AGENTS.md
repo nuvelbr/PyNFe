@@ -10,7 +10,7 @@ Brazilian electronic fiscal document library for NF-e, NFC-e, NFS-e, MDF-e, CT-e
 
 ## Navigation gate
 
-Before reading a mapped source file longer than 200 lines, read its map in `docs/` and then open only the relevant source range. The maps cover `serializacao.py`, `comunicacao.py`, `autorizador_nfse.py`, `notafiscal.py`, `manifesto.py`, `evento.py`, `flags.py`, `webservices.py`, and `utils/__init__.py`; use [`docs/README.md`](docs/README.md) to select one.
+Before reading a mapped source file longer than 200 lines, use its map in `docs/` to find the symbol you need, then confirm the current range with `grep -n` and open only that range: the maps' line numbers drift as the files change and are not regenerated automatically. The maps cover `serializacao.py`, `comunicacao.py`, `autorizador_nfse.py`, `notafiscal.py`, `manifesto.py`, `evento.py`, `flags.py`, `webservices.py`, and `utils/__init__.py`; use [`docs/README.md`](docs/README.md) to select one.
 
 ## Commands and full checks
 

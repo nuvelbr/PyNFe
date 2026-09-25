@@ -13,4 +13,4 @@
 | [webservices_map.md](webservices_map.md) | Navigation map for endpoints by state and environment. |
 | [utils_map.md](utils_map.md) | Navigation map for shared utility functions. |
 
-Read the matching source map before opening any mapped source file longer than 200 lines. Repository-wide commands and invariants live in [`../AGENTS.md`](../AGENTS.md).
+Use the matching source map to locate a symbol before opening any mapped source file longer than 200 lines; its line ranges may lag the source, so confirm them with `grep -n`. Repository-wide commands and invariants live in [`../AGENTS.md`](../AGENTS.md).

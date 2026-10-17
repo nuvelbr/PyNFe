@@ -42,3 +42,5 @@ A focused `pytest tests/<file>.py` is useful during development but never replac
 ## Dependencies
 
 Core dependencies include `lxml`, `signxml`, `cryptography`/`pyopenssl`, and `requests`; NFS-e additionally uses `suds-community` and `PyXB-X`. Do not casually broaden supported Python/dependency ranges because certificate and generated-binding compatibility is sensitive.
+
+Language: anything not customer-visible (docs, rules, prompts, code comments, commits, PRs) is written in English; only customer-facing copy stays PT-BR.

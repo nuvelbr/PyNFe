@@ -21,6 +21,7 @@ line-length = 100
 
 [tool.poetry.dependencies]
 requests = "^2.32.4"
+certifi = ">=2026.10.19"
 signxml = ">=4.1.0"
 cryptography = ">=43.0.3"
 lxml = ">=5.4.0"

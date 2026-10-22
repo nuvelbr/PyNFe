@@ -41,8 +41,12 @@ class Comunicacao(object):
     certificado = None
     certificado_senha = None
     url = None
+    # Passed to requests as `verify`: True, False or a CA bundle path.
+    # False keeps the historical behavior (no SEFAZ server certificate validation).
+    verify = False
 
-    def __init__(self, uf, certificado, certificado_senha, homologacao=False):
+    def __init__(self, uf, certificado, certificado_senha, homologacao=False, verify=False):
+        self.verify = verify
         self.uf = uf
         self.certificado = certificado
         self.certificado_senha = certificado_senha
@@ -603,7 +607,7 @@ class ComunicacaoSefaz(Comunicacao):
                 xml,
                 headers=self._post_header(),
                 cert=chave_cert,
-                verify=False,
+                verify=self.verify,
                 timeout=timeout,
             )
             result.encoding = "utf-8"
@@ -1102,7 +1106,7 @@ class ComunicacaoMDFe(Comunicacao):
                 xml,
                 headers=self._post_header(content_type=content_type),
                 cert=chave_cert,
-                verify=False,
+                verify=self.verify,
                 timeout=50,
             )
             result.encoding = "utf-8"
@@ -1350,7 +1354,7 @@ class ComunicacaoCTe(Comunicacao):
                 xml,
                 headers=self._post_header(),
                 cert=chave_cert,
-                verify=False,
+                verify=self.verify,
                 timeout=300,
             )
             result.encoding = "utf-8"

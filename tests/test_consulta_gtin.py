@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+import requests
 
 from pynfe.processamento.comunicacao import ComunicacaoSefaz
 from pynfe.utils import etree
@@ -91,6 +92,25 @@ def test_rejects_malformed_gtin_without_calling_sefaz(gtin):
         with pytest.raises(ValueError):
             con.consulta_gtin(gtin)
     post.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "erro",
+    [
+        requests.exceptions.ConnectTimeout("timed out"),
+        requests.exceptions.ConnectionError("connection reset"),
+        requests.exceptions.SSLError("handshake failure"),
+    ],
+)
+def test_transport_error_propagates_and_removes_the_temporary_cert_files(erro):
+    con = _comunicacao()
+    with mock.patch("pynfe.processamento.comunicacao.requests.post", side_effect=erro) as post:
+        with pytest.raises(type(erro)):
+            con.consulta_gtin("7891000315507", timeout=5)
+    post.assert_called_once()
+    cert, chave = post.call_args.kwargs["cert"]
+    assert not Path(cert).exists()
+    assert not Path(chave).exists()
 
 
 def test_reads_found_product():

@@ -6,6 +6,9 @@ NAMESPACE_SOAP = "http://www.w3.org/2003/05/soap-envelope"
 NAMESPACE_XSI = "http://www.w3.org/2001/XMLSchema-instance"
 NAMESPACE_XSD = "http://www.w3.org/2001/XMLSchema"
 NAMESPACE_METODO = "http://www.portalfiscal.inf.br/nfe/wsdl/"
+# NT 2022.001 (Consulta GTIN): the WSDL namespace spells "Gtin" in mixed case,
+# unlike the method name "ccgConsGTIN".
+NAMESPACE_CCG_GTIN = "http://www.portalfiscal.inf.br/nfe/wsdl/ccgConsGtin"
 
 NAMESPACE_SOAP_NFSE = "http://schemas.xmlsoap.org/soap/envelope/"
 NAMESPACE_BETHA = "http://www.betha.com.br/e-nota-contribuinte-ws"
@@ -16,6 +19,9 @@ MODELO_MDFE = "58"
 VERSAO_MDFE = "3.00"
 
 VERSAO_PADRAO = "4.00"
+
+# NT 2022.001: consGTIN / retConsGTIN layout version (PL_ConsultaGTIN_v1.00).
+VERSAO_CCG_GTIN = "1.00"
 
 NAMESPACE_CTE = "http://www.portalfiscal.inf.br/cte"
 NAMESPACE_CTE_METODO = "http://www.portalfiscal.inf.br/cte/wsdl/"

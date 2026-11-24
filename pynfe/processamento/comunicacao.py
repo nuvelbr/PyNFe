@@ -12,6 +12,7 @@ from pynfe.utils.flags import (
     CODIGOS_ESTADOS,
     MODELO_MDFE,
     NAMESPACE_BETHA,
+    NAMESPACE_CCG_GTIN,
     NAMESPACE_CTE,
     NAMESPACE_CTE_METODO,
     NAMESPACE_MDFE,
@@ -21,11 +22,12 @@ from pynfe.utils.flags import (
     NAMESPACE_SOAP,
     NAMESPACE_XSD,
     NAMESPACE_XSI,
+    VERSAO_CCG_GTIN,
     VERSAO_CTE,
     VERSAO_MDFE,
     VERSAO_PADRAO,
 )
-from pynfe.utils.webservices import CTE, MDFE, NFCE, NFE, NFSE
+from pynfe.utils.webservices import CCG_GTIN, CTE, MDFE, NFCE, NFE, NFSE
 
 from .assinatura import AssinaturaA1
 
@@ -340,6 +342,69 @@ class ComunicacaoSefaz(Comunicacao):
         xml = self._construir_xml_soap("NFeStatusServico4", raiz)
         return self._post(url, xml, timeout)
 
+    def consulta_gtin(self, gtin, timeout=None):
+        """
+        Query a GTIN in the Cadastro Centralizado de GTIN (CCG), NT 2022.001.
+
+        The service is national (SVRS), synchronous, needs mutual TLS with an ICP-Brasil
+        certificate whose CNPJ/CPF is an NF-e/NFC-e issuer, and takes no XML signature.
+        It only answers GTINs issued by GS1 Brasil (prefix 789/790); other prefixes come
+        back as cStat 9492. The NT publishes no homologation endpoint, so the production
+        URL is used regardless of ``homologacao``.
+
+        :param gtin: GTIN-8, 12, 13 or 14 (digits only)
+        :param timeout: forwarded to ``requests.post``
+        :return: the raw ``requests.Response``; parse it with ``ler_retorno_consulta_gtin``
+        """
+        gtin = str(gtin).strip()
+        if not gtin.isdigit() or len(gtin) not in (8, 12, 13, 14):
+            raise ValueError("GTIN deve ter 8, 12, 13 ou 14 digitos numericos: %r" % gtin)
+
+        raiz = etree.Element("consGTIN", versao=VERSAO_CCG_GTIN, xmlns=NAMESPACE_NFE)
+        etree.SubElement(raiz, "GTIN").text = gtin
+        xml = self._construir_xml_soap("ccgConsGTIN", raiz)
+        headers = self._post_header()
+        # SOAP 1.2 carries the action as a content-type parameter.
+        headers["content-type"] = (
+            'application/soap+xml; charset=utf-8; action="%s/ccgConsGTIN"' % NAMESPACE_CCG_GTIN
+        )
+        return self._post(CCG_GTIN, xml, timeout, headers=headers)
+
+    @staticmethod
+    def ler_retorno_consulta_gtin(conteudo):
+        """
+        Read the ``retConsGTIN`` (NT 2022.001) out of a SOAP response body.
+
+        :param conteudo: response body (``str`` or ``bytes``), e.g. ``resposta.content``
+        :return: dict with ``cStat``, ``xMotivo``, ``verAplic``, ``dhResp``, ``GTIN``,
+            ``tpGTIN``, ``xProd``, ``NCM`` (``str`` or ``None`` when absent) and ``CEST``
+            (``list`` of up to 3 codes, empty when absent). Product data is present only
+            for cStat 9490, 9497 and 9498.
+        :raises ValueError: when the body has no ``retConsGTIN`` (SOAP fault, HTML error
+            page, empty body).
+        """
+        if isinstance(conteudo, str):
+            conteudo = conteudo.encode("utf-8")
+        try:
+            raiz = etree.fromstring(conteudo)
+        except etree.XMLSyntaxError as e:
+            raise ValueError("Resposta da consulta GTIN nao e XML valido") from e
+        ns = {"ns": NAMESPACE_NFE}
+        ret = raiz.find(".//ns:retConsGTIN", namespaces=ns)
+        if ret is None:
+            raise ValueError("Resposta da consulta GTIN sem retConsGTIN")
+
+        def texto(tag):
+            no = ret.find("ns:%s" % tag, namespaces=ns)
+            return no.text if no is not None else None
+
+        retorno = {
+            tag: texto(tag)
+            for tag in ("cStat", "xMotivo", "verAplic", "dhResp", "GTIN", "tpGTIN", "xProd", "NCM")
+        }
+        retorno["CEST"] = [no.text for no in ret.findall("ns:CEST", namespaces=ns)]
+        return retorno
+
     def inutilizacao(
         self,
         modelo,
@@ -567,6 +632,9 @@ class ComunicacaoSefaz(Comunicacao):
         if metodo == "NFeDistribuicaoDFe":
             x = etree.SubElement(body, "nfeDistDFeInteresse", xmlns=NAMESPACE_METODO + metodo)
             a = etree.SubElement(x, "nfeDadosMsg")
+        elif metodo == "ccgConsGTIN":
+            x = etree.SubElement(body, "ccgConsGTIN", xmlns=NAMESPACE_CCG_GTIN)
+            a = etree.SubElement(x, "nfeDadosMsg")
         elif metodo == "CadConsultaCadastro4" and self.uf.upper() == "MT":
             x = etree.SubElement(body, "consultaCadastro", xmlns=NAMESPACE_METODO + metodo)
             a = etree.SubElement(x, "nfeDadosMsg")
@@ -586,7 +654,7 @@ class ComunicacaoSefaz(Comunicacao):
             response["SOAPAction"] = ""
         return response
 
-    def _post(self, url, xml, timeout=None):
+    def _post(self, url, xml, timeout=None, headers=None):
         certificado_a1 = CertificadoA1(self.certificado)
         chave, cert = certificado_a1.separar_arquivo(self.certificado_senha, caminho=True)
         chave_cert = (cert, chave)
@@ -605,7 +673,7 @@ class ComunicacaoSefaz(Comunicacao):
             result = requests.post(
                 url,
                 xml,
-                headers=self._post_header(),
+                headers=headers or self._post_header(),
                 cert=chave_cert,
                 verify=self.verify,
                 timeout=timeout,

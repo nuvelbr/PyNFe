@@ -682,3 +682,8 @@ CTE = {
         "HOMOLOGACAO": "https://homologacao.nfe.",
     },
 }
+
+# NT 2022.001 - Consulta GTIN via Web Service (Cadastro Centralizado de GTIN, CCG).
+# Single national endpoint hosted by SVRS. The NT publishes a production URL only:
+# there is no homologation environment, and the CCG query is read-only.
+CCG_GTIN = "https://dfe-servico.svrs.rs.gov.br/ws/ccgConsGTIN/ccgConsGTIN.asmx"
